@@ -1,0 +1,24 @@
+# Normalize line endings for everything committed to this repository.
+# The TZ requires the deployment target to be Linux; CRLF committed from a
+# Windows workstation breaks shell scripts and nginx configs on the server.
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.yml text eol=lf
+*.conf text eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.xlsx binary
+*.db binary
+*.sqlite binary
