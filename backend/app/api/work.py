@@ -198,7 +198,9 @@ def _milestone_dict(row) -> dict:
 def list_milestones(project_id: str, actor: CurrentActor,
                     include_archived: bool = False):
     _require_project(project_id)
-    clause = "" if include_archived else " AND archived_at IS NULL"
+    # archived_at есть и в milestones, и в persons: уточняем таблицу,
+    # иначе SQLite считает имя неоднозначным.
+    clause = "" if include_archived else " AND m.archived_at IS NULL"
     rows = query(
         f"SELECT m.*, p.full_name AS responsible_name FROM milestones m"
         f" LEFT JOIN persons p ON p.id = m.responsible_person_id"
@@ -459,7 +461,7 @@ def list_materials(project_id: str, actor: CurrentActor):
         "     (SELECT id FROM milestones WHERE project_id = ?))"
         " OR (object_type = 'result' AND object_id IN"
         "     (SELECT result_id FROM result_projects WHERE project_id = ?))"
-        " ORDER BY created_at DESC", (project_id, project_id, project_id))
+        " ORDER BY uploaded_at DESC", (project_id, project_id, project_id))
     return {"items": [dict(r) for r in rows]}
 
 

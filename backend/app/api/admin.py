@@ -239,14 +239,16 @@ DICTS = {
 
 @router.get("/dictionaries")
 def list_dictionaries(actor: CurrentActor,
-                      dict: str | None = Query(default=None),
+                      dict_name: str | None = Query(default=None, alias="dict"),
                       include_inactive: bool = False):
     _require_admin(actor)
     where = [] if include_inactive else ["is_active = 1"]
     params: list = []
-    if dict:
+    # Имя параметра не может быть `dict`: оно перекрывает встроенную функцию,
+    # и вызов dict(row) ниже перестаёт работать.
+    if dict_name:
         where.append("dict = ?")
-        params.append(dict)
+        params.append(dict_name)
     clause = f"WHERE {' AND '.join(where)}" if where else ""
     rows = query(f"SELECT * FROM dict_items {clause} ORDER BY dict, sort_order, title",
                  tuple(params))
