@@ -179,7 +179,10 @@ def project_public_card(project: dict, *, include_unpublished: bool = False) -> 
         "public_annotation": project.get("public_annotation"),
         "status": status,
         "status_title": STATUS_TITLES.get(status, status),
-        "route": project.get("route"),
+        # ВНИМАНИЕ: route (упрощённый или полный маршрут) в публичную карточку
+        # НЕ выводится. A-07 «Маршрут» помечен в Приложении А как «Открыто: Нет»,
+        # а различие маршрутов раскрывает внутреннюю логику процесса и часть
+        # оснований T-01…T-06. Поле route отсутствует и в PUBLIC_PROJECT_FIELDS.
         "start_year": (project.get("planned_start") or "")[:4] or None,
         "end_year": (project.get("planned_end") or "")[:4] or None,
         "start_date": fmt_date(project.get("planned_start")),
@@ -270,10 +273,14 @@ def public_projects(filters: dict | None = None) -> list[dict]:
         where.append("p.status = ?")
         params.append(filters["status"])
     if filters.get("q"):
-        where.append("(LOWER(p.title) LIKE ? OR LOWER(COALESCE(p.short_title, '')) LIKE ?"
-                     " OR LOWER(COALESCE(p.public_annotation, '')) LIKE ?)")
+        # Поиск идёт по search_blob, а не по LOWER(p.title): встроенная в SQLite
+        # lower() работает только с ASCII, поэтому приведение кириллицы к
+        # нижнему регистру средствами БД не происходит и фильтр молча не находит
+        # НИ ОДНОГО русского проекта. search_blob уже приведён к нижнему
+        # регистру в Python при записи карточки.
         needle = f"%{str(filters['q']).lower()}%"
-        params.extend([needle] * 3)
+        where.append("p.search_blob LIKE ?")
+        params.append(needle)
     rows = query(
         "SELECT p.* FROM projects p LEFT JOIN programs pr ON pr.id = p.program_id"
         f" WHERE {' AND '.join(where)} ORDER BY p.code", tuple(params))

@@ -304,6 +304,26 @@ def _empty(value: Any) -> bool:
     return False
 
 
+#: Поля, задаваемые при СОЗДАНИИ карточки и не меняемые обычной правкой:
+#: они не входят в белый список изменяемых полей сервиса. Проверка
+#: комплектности обязана их видеть, иначе карточка вечно считалась бы
+#: незаполненной по программе и руководителю и не могла бы уйти из ST-01.
+CREATION_ONLY_FIELDS: tuple[str, ...] = (
+    "program_id", "leader_person_id", "publish_mode", "route",
+)
+
+
+def completeness_source(project: dict) -> dict:
+    """Срез карточки для проверки комплектности.
+
+    Берутся ВСЕ поля строки проекта, а не только редактируемые: обязательными
+    являются и заданные при создании поля, и те, что меняются правкой.
+    """
+    source = dict(project)
+    source.setdefault("route", project.get("route") or "simplified")
+    return source
+
+
 def missing_required_fields(
     project: dict,
     *,
@@ -316,6 +336,7 @@ def missing_required_fields(
     Возвращает названия полей из Приложения А, чтобы пользователь видел «что
     именно дозаполнить», а не внутренние имена колонок.
     """
+    project = completeness_source(project)
     route = project.get("route") or "simplified"
     missing: list[str] = []
 

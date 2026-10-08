@@ -146,6 +146,33 @@ def _split(value: str, sep: str) -> list[str]:
 #  Чтение файла
 # ---------------------------------------------------------------------------
 
+def _read_csv_rows(text: str) -> list[list[Any]]:
+    """Прочитать CSV, определив разделитель по утверждённой форме.
+
+    Оба разделителя являются корректным входом (п.7.2 п.2): точка с запятой —
+    формат выгрузки системы, запятая — формат по умолчанию в csv.reader и в
+    Excel, сохраняющем CSV. Фиксированный разделитель ломал вторую сторону:
+    при чтении строки запятой получается одна ячейка из всей строки, и
+    утверждённая форма «не найдена», хотя файл верный. Выбирается тот
+    разделитель, при котором строка заголовков совпадает с формой.
+    """
+    best: tuple[int, list[list[Any]]] | None = None
+    for delimiter in (";", ","):
+        rows = [r for r in csv.reader(io.StringIO(text), delimiter=delimiter)
+                if any(str(cell).strip() for cell in r)]
+        if not rows:
+            continue
+        headers = {_clean(cell) for cell in rows[0]}
+        score = sum(1 for col in IMPORT_COLUMNS if col["header"] in headers)
+        if best is None or score > best[0]:
+            best = (score, rows)
+        if score == len(IMPORT_COLUMNS):
+            break
+    if best is None:
+        raise ValueError("Файл пуст: нет ни одной строки с данными")
+    return best[1]
+
+
 def read_rows(data: bytes, filename: str) -> list[dict]:
     """Прочитать строки из XLSX или CSV.
 
@@ -156,8 +183,11 @@ def read_rows(data: bytes, filename: str) -> list[dict]:
     name = (filename or "").lower()
     if name.endswith(".csv"):
         text = data.decode("utf-8-sig")
-        reader = csv.reader(io.StringIO(text))
-        raw = [r for r in reader if any(c.strip() for c in r)]
+        # Разделитель CSV — точка с запятой, как и в выгрузке
+        # (см. ИНСТРУКЦИЯ-ИМПОРТА). Чтение с запятой по умолчанию не находит
+        # разделителей вовсе: строка целиком становится одним «заголовком»,
+        # и файл отвергается как не соответствующий форме.
+        raw = _read_csv_rows(text)
         header, body = raw[0], raw[1:]
     else:
         try:
@@ -405,13 +435,22 @@ def confirm_import(preview: ImportPreview, rows: list[dict], file_name: str,
                     " WHERE id = ?", (now, actor.id, project_id))
         created += 1
 
+    # Пакет уже создан при предпросмотре, поэтому здесь обновление, а не вставка:
+    # идентификатор пакета один на всю загрузку — от предпросмотра до итогового
+    # протокола (п.7.2 п.6).
     execute(
         "INSERT INTO import_batches (id, file_name, total_rows, ok_rows, warning_rows,"
         " error_rows, duplicate_rows, status, protocol, created_at, created_by,"
-        " confirmed_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?)",
+        " confirmed_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?)"
+        " ON CONFLICT(id) DO UPDATE SET status = 'confirmed',"
+        " total_rows = excluded.total_rows, ok_rows = excluded.ok_rows,"
+        " warning_rows = excluded.warning_rows, error_rows = excluded.error_rows,"
+        " duplicate_rows = excluded.duplicate_rows, protocol = excluded.protocol,"
+        " confirmed_at = excluded.confirmed_at",
         (preview.batch_id, file_name, fresh.total_rows, fresh.ok_rows,
          fresh.warning_rows, fresh.error_rows, fresh.duplicate_rows,
          json.dumps(fresh.protocol, ensure_ascii=False), now, actor.id, now))
+    fresh.batch_id = preview.batch_id  # тот же идентификатор, что записан ниже
     fresh.created = True
     fresh.protocol = list(fresh.protocol)
     return fresh

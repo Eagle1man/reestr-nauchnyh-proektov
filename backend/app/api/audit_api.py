@@ -49,7 +49,7 @@ def list_events(
     _require_read(actor)
     events = audit.search(
         object_type=object_type, object_id=object_id, group_name=group_name,
-        user_id=user_id, action=action, since=since,
+        user_id=user_id, action=action, outcome=outcome, since=since,
         limit=page.limit, offset=page.offset,
     )
     for event in events:

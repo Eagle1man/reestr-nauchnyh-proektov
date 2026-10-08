@@ -97,6 +97,11 @@ def password() -> str:
 
 _CASE_COUNTER = itertools.count()
 
+#: Сколько каталогов с базами держать одновременно. Старые удаляются: файлы
+#: баз невелики, но сотня прогонов незаметно съедает временный каталог.
+#: Оставляем запас — рабочие потоки TestClient живут дольше одного теста.
+_KEEP_CASES = 3
+
 
 @pytest.fixture(scope="session")
 def _tmp_root():
@@ -112,6 +117,11 @@ def isolated_db(_tmp_root):
     case_dir = _tmp_root / f"case-{next(_CASE_COUNTER):04d}"
     case_dir.mkdir(parents=True, exist_ok=True)
     db_path = case_dir / "registry.db"
+
+    # Подчищаем базы прошлых тестов, оставляя запас для «живущих» потоков.
+    existing = sorted(p for p in _tmp_root.glob("case-*") if p.is_dir())
+    for old in existing[:-_KEEP_CASES]:
+        shutil.rmtree(old, ignore_errors=True)
 
     db._local = threading.local()
     object.__setattr__(settings, "database_path", str(db_path))
@@ -582,6 +592,11 @@ class Api:
             kwargs["headers"] = {**(kwargs.get("headers") or {}), **self.headers(login)}
         return self.client.request("DELETE", path, **kwargs)
 
+    def request(self, method: str, path: str, login: str | None = None, **kwargs):
+        if login:
+            kwargs["headers"] = {**(kwargs.get("headers") or {}), **self.headers(login)}
+        return self.client.request(method, path, **kwargs)
+
 
 @pytest.fixture
 def api(client) -> Api:
@@ -614,7 +629,7 @@ def build_import_xlsx(rows: list[dict], *, columns=None) -> bytes:
     return buffer.getvalue()
 
 
-def build_import_csv(rows: list[dict], *, columns=None) -> bytes:
+def build_import_csv(rows: list[dict], *, columns=None, delimiter: str = ";") -> bytes:
     """Собрать CSV по форме инвентаризации (разделитель «;», UTF-8 с BOM)."""
     import csv
     import io
@@ -623,7 +638,7 @@ def build_import_csv(rows: list[dict], *, columns=None) -> bytes:
 
     columns = columns or IMPORT_COLUMNS
     buffer = io.StringIO(newline="")
-    writer = csv.writer(buffer, delimiter=";")
+    writer = csv.writer(buffer, delimiter=delimiter)
     writer.writerow([column["header"] for column in columns])
     for row in rows:
         writer.writerow([row.get(column["key"], "") for column in columns])

@@ -318,9 +318,11 @@ def update_milestone(project_id: str, milestone_id: str, body: MilestoneUpdate,
     if changes or "status" in data:
         assignments = []
         params: list[Any] = []
-        for key, value in changes.items():
+        # changes хранит пары (прежнее, новое); в SQL идёт ТОЛЬКО новое —
+        # иначе sqlite получает кортеж вместо значения (ProgrammingError).
+        for key, (_old_value, new_value) in changes.items():
             assignments.append(f"{key} = ?")
-            params.append(value)
+            params.append(new_value)
         if "status" in data:
             assignments.append("status = ?")
             params.append(data["status"])

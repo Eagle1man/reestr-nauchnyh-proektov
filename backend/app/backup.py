@@ -215,15 +215,30 @@ def list_backups() -> list[dict]:
     return items
 
 
+#: Служебные копии, которые уборка по сроку хранения НЕ трогает.
+#: Сравнение идёт по НАЧАЛУ имени файла: реальные имена начинаются с префикса
+#: «weekly-…», а не содержат «-weekly-» в середине. Прежняя проверка вхождения
+#: подстроки никогда не срабатывала, и уборка удаляла недельные копии и
+#: обязательные контрольные копии перед обновлением — ровно те, которые п.11.4
+#: требует хранить.
+SERVICE_PREFIXES: tuple[str, ...] = (
+    "weekly-",           # недельная копия для отдельного хранилища
+    "before-update-",    # контрольная копия перед обновлением
+    "before-restore-",   # копия текущего состояния перед восстановлением
+)
+
+
 def purge_expired() -> list[str]:
-    """Удалить копии старше срока хранения. Недельные оставляются."""
+    """Удалить ежедневные копии старше срока хранения.
+
+    Недельные копии, контрольные копии перед обновлением и копии перед
+    восстановлением сохраняются независимо от возраста (п.11.4).
+    """
     cutoff = now_msk() - timedelta(days=settings.backup_retention_days)
     removed: list[str] = []
     for file in backup_dir().glob("*.sqlite3"):
         if datetime_from_mtime(file) < cutoff:
-            stem = file.stem
-            # Недельная копия: день недели == понедельник, помечается префиксом weekly-
-            if "-weekly-" in stem or "-before-update-" in stem:
+            if file.name.startswith(SERVICE_PREFIXES):
                 continue
             file.unlink(missing_ok=True)
             Path(str(file) + ".label").unlink(missing_ok=True)

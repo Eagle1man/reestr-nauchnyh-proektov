@@ -122,6 +122,7 @@ def search(
     group_name: str | None = None,
     user_id: str | None = None,
     action: str | None = None,
+    outcome: str | None = None,
     since: str | None = None,
     limit: int = 100,
     offset: int = 0,
@@ -131,6 +132,7 @@ def search(
     for column, value in (
         ("object_type", object_type), ("object_id", object_id),
         ("group_name", group_name), ("user_id", user_id), ("action", action),
+        ("outcome", outcome),
     ):
         if value:
             where.append(f"{column} = ?")

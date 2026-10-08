@@ -63,8 +63,11 @@ def dashboard(actor: CurrentActor, program_id: str | None = None):
     by_risk = _counts_by("risk_level", clause, tuple(params))
 
     total_results = scalar(
-        "SELECT COUNT(*) FROM results r JOIN result_projects rp ON rp.result_id = r.id"
-        f" JOIN projects p ON p.id = rp.project_id WHERE {clause}"
+        # COUNT(DISTINCT r.id), а не COUNT(*): один результат может быть связан
+        # с несколькими проектами, но учитывается в статистике один раз
+        # (FR-17, п.6.1 п.3, сценарий ПС-12).
+        "SELECT COUNT(DISTINCT r.id) FROM results r JOIN result_projects rp"
+        f" ON rp.result_id = r.id JOIN projects p ON p.id = rp.project_id WHERE {clause}"
         " AND r.archived_at IS NULL", tuple(params), 0)
 
     questions = _questions(clause, tuple(params))
@@ -386,7 +389,9 @@ def council_review(actor: CurrentActor):
                                " AND archived_at IS NULL AND risk_level = 'red'",
                                (row["id"],), 0),
             "results": scalar(
-                "SELECT COUNT(*) FROM results r JOIN result_projects rp"
+                # DISTINCT по id: результат на несколько проектов считается один
+                # раз в программе, как и во всём портфеле (FR-17).
+                "SELECT COUNT(DISTINCT r.id) FROM results r JOIN result_projects rp"
                 " ON rp.result_id = r.id JOIN projects p ON p.id = rp.project_id"
                 " WHERE p.program_id = ? AND r.archived_at IS NULL", (row["id"],), 0),
         })

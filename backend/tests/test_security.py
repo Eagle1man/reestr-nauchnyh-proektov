@@ -18,7 +18,6 @@ from __future__ import annotations
 import json
 from datetime import timedelta
 
-import pytest
 
 from app import security
 from app.config import settings

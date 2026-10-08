@@ -133,7 +133,8 @@ cd backend && ..\.venv\Scripts\python -m uvicorn app.main:app --port 8000
 # Проверка интерфейса и всех экранов — 41 проверка
 .venv\Scripts\python backend\scripts\check_ui.py http://127.0.0.1:8000 <ПАРОЛЬ>
 
-# Модульные тесты: 22 приёмочных сценария Приложения В и правила ТЗ
+# Модульные тесты: 385 проверок — 22 приёмочных сценария Приложения В
+# и правила ТЗ
 .venv\Scripts\python -m pytest backend/tests -q
 
 # Типы и сборка интерфейса

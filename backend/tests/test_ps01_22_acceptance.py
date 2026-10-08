@@ -17,7 +17,6 @@ from __future__ import annotations
 import concurrent.futures as cf
 import json
 
-import pytest
 
 from app.db import query, query_one, scalar
 from app.utils import add_working_days, today_msk
@@ -425,15 +424,6 @@ def test_ps11_milestone_creation_validation(api, project, users, ahead):
     assert created.json()["is_overdue"] is False
 
 
-@pytest.mark.xfail(
-    reason="НАСТОЯЩИЙ БАГ (FR-12, A-40…A-42): в api/work.py update_milestone "
-           "словарь changes хранит пары (прежнее, новое), но в SQL-UPDATE "
-           "добавляется params.append(value) — то есть в параметр попадает "
-           "ВЕСЬ кортеж. Любое изменение поля контрольной точки (отметка "
-           "выполнения, перенос срока с причиной) даёт 500 "
-           "sqlite3.ProgrammingError: type 'tuple' is not supported.",
-    strict=True,
-)
 def test_ps11_milestone_requires_evidence_date_and_postpone_reason(api, project, users,
                                                                   make_milestone, ahead):
     """ПС-11 (изменение точки): «Выполнение точки без доказательства
@@ -481,14 +471,6 @@ def test_ps11_milestone_requires_evidence_date_and_postpone_reason(api, project,
 #  ПС-12. Один результат — несколько проектов, учёт один раз
 # ===========================================================================
 
-@pytest.mark.xfail(
-    reason="НАСТОЯЩИЙ БАГ (FR-17, п.6.1 п.3): в analytics.py счётчик "
-           "totals.results считает строки JOIN results×result_projects, а не "
-           "COUNT(DISTINCT r.id). Один результат, связанный с двумя проектами, "
-           "попадает в статистику дважды. Тот же дефект в council_review(). "
-           "Ожидаемое поведение зафиксировано тестом.",
-    strict=True,
-)
 def test_ps12_single_result_counts_once(api, make_project, users, make_result):
     """ПС-12: «Один результат может относиться к нескольким проектам и в общей
     статистике учитывается ОДИН раз» (FR-17, п.6.1 п.3)."""

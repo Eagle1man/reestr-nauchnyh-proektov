@@ -167,14 +167,6 @@ def test_closed_fields_list_is_the_source_of_truth():
     assert "title" in PUBLIC_PROJECT_FIELDS
 
 
-@pytest.mark.xfail(
-    reason="НАСТОЯЩИЙ БАГ (SEC-03, п.9.2, A-07): services.public."
-           "project_public_card() кладёт в публичную карточку поле route, хотя "
-           "в FIELD_DICTIONARY для A-07 «Маршрут» стоит public = «Нет», а сам "
-           "route входит не в PUBLIC_PROJECT_FIELDS, а в закрытый набор. "
-           "Внутренний признак упрощённого/полного маршрута утекает наружу.",
-    strict=True,
-)
 def test_public_card_contains_only_whitelisted_keys(raw_client, published, users):
     """Белый список, а не чёрный: набор ключей карточки предсказуем."""
     project = published(title="Белый список полей", flag_partner=1)
@@ -395,15 +387,6 @@ def test_public_filters_work(raw_client, published, program, closed_program):
     assert empty["meta"]["total"] == 0
 
 
-@pytest.mark.xfail(
-    reason="НАСТОЯЩИЙ БАГ (FR-25, п.9.4): поиск по ключевым словам в публичном "
-           "API использует SQL LOWER(p.title). Встроенная в SQLite функция "
-           "lower() работает только с ASCII, поэтому кириллица никогда не "
-           "приводится к нижнему регистру и фильтр q молча не находит НИ "
-           "ОДНОГО русского проекта. Внутренний поиск (/api/projects?q=) от "
-           "этого защищён, потому что search_blob строится в Python.",
-    strict=True,
-)
 def test_public_keyword_search_finds_cyrillic(raw_client, published):
     """Поиск по ключевым словам на кириллице (п.9.4, FR-25)."""
     published(title="Адаптивные методы управления качеством")

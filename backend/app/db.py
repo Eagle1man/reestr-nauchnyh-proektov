@@ -67,16 +67,43 @@ def close_thread_conn() -> None:
 
 @contextmanager
 def transaction() -> Iterator[sqlite3.Connection]:
-    """Атомарный блок: ошибка одной операции не должна повреждать другие данные (п.10.1 п.1)."""
+    """Атомарный блок: ошибка одной операции не должна повреждать другие данные (п.10.1 п.1).
+
+    Вложенные вызовы допускаются: внутренний открывает SAVEPOINT и откатывает
+    только свою часть, не затрагивая изменения внешнего блока. Это нужно,
+    потому что одна логическая операция состоит из нескольких сервисных
+    вызовов: например, подтверждение импорта создаёт карточку (собственная
+    транзакция) внутри общей транзакции пакета. Без вложенности внутренний
+    BEGIN упал бы с «cannot start a transaction within a transaction».
+    """
     conn = get_conn()
-    try:
+    depth = getattr(_local, "tx_depth", 0)
+    savepoint = f"sp_{depth}"
+    if depth == 0:
         conn.execute("BEGIN IMMEDIATE")
+    else:
+        conn.execute(f"SAVEPOINT {savepoint}")
+    _local.tx_depth = depth + 1
+    try:
         yield conn
     except Exception:
-        conn.rollback()
+        try:
+            if depth == 0:
+                conn.rollback()
+            else:
+                conn.execute(f"ROLLBACK TO {savepoint}")
+                conn.execute(f"RELEASE {savepoint}")
+        finally:
+            _local.tx_depth = depth
         raise
     else:
-        conn.commit()
+        try:
+            if depth == 0:
+                conn.commit()
+            else:
+                conn.execute(f"RELEASE {savepoint}")
+        finally:
+            _local.tx_depth = depth
 
 
 def query(sql: str, params: tuple | dict = ()) -> list[sqlite3.Row]:

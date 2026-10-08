@@ -121,7 +121,13 @@ def test_holiday_calendar_reduces_delay(ago):
     нерабочий день внутри периода уменьшает задержку на день."""
     planned = ago(21)
     holiday = date.fromisoformat(planned) + timedelta(days=2)
-    assert holiday.weekday() < 5
+    # Праздник имеет смысл только если он выпадает на рабочий день: в выходной
+    # задержка и так не считается. Фиксированное «+2 дня» попадало в субботу
+    # при некоторых значениях сегодняшней даты, поэтому день сдвигается до
+    # понедельника — проверка перестала зависеть от календаря запуска.
+    while holiday.weekday() >= 5:
+        holiday += timedelta(days=1)
+    assert holiday < TODAY
     plain = assess(milestones=[milestone(planned)])
     with_holiday = assess(milestones=[milestone(planned)],
                           holidays={holiday.isoformat()})

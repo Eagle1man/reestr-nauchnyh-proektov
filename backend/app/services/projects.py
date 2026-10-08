@@ -59,14 +59,20 @@ def code_pattern(year: int | None = None) -> re.Pattern:
 #  Номер проекта (FR-06)
 # ---------------------------------------------------------------------------
 
-def next_project_code(year: int | None = None) -> str:
+def next_project_code(year: int | None = None, conn=None) -> str:
+    """Следующий номер вида РНП-ГГГГ-НННН (FR-06).
+
+    Номер вычисляется и вставляется В ОДНОЙ транзакции. Иначе при параллельном
+    создании карточек несколько потоков читают один и тот же максимум, получают
+    одинаковый номер, и вторая вставка падает по UNIQUE. Передайте conn, чтобы
+    генерация шла внутри уже открытой транзакции.
+    """
     y = year or CODE_YEAR
     prefix = f"{CODE_PREFIX}-{y}-"
-    existing = query(
-        "SELECT code FROM projects WHERE code LIKE ?", (f"{prefix}%",)
-    )
+    runner = conn.execute if conn is not None else query
+    rows = runner("SELECT code FROM projects WHERE code LIKE ?", (f"{prefix}%",))
     max_no = 0
-    for row in existing:
+    for row in rows:
         tail = row["code"][len(prefix):]
         if tail.isdigit():
             max_no = max(max_no, int(tail))
@@ -256,10 +262,7 @@ def build_context(project_id: str, project: dict) -> TransitionContext:
     partner_count = scalar("SELECT COUNT(*) FROM project_partners WHERE project_id = ?",
                            (project_id,), 0)
     missing = missing_required_fields(
-        {k: project.get(k) for k in EDITABLE_FIELDS} | {
-            "route": project.get("route"),
-            "publish_mode": project.get("publish_mode"),
-        },
+        project,
         team_size=team_size, milestone_count=milestone_count,
         partner_count=partner_count,
     )
@@ -405,11 +408,10 @@ def create_project(*, payload: dict, user_id: str) -> dict:
 
     route_auto, reasons = suggest_route(clean)
     project_id = new_id()
-    code = next_project_code()
     now = now_iso()
 
     columns = {
-        "id": project_id, "code": code, "program_id": program_id,
+        "id": project_id, "program_id": program_id,
         "route": route_auto, "route_auto": route_auto,
         "status": "ST-01", "status_changed_at": now,
         "risk_level": "green", "risk_changed_at": now,
@@ -419,18 +421,22 @@ def create_project(*, payload: dict, user_id: str) -> dict:
     columns.update(clean)
     columns["search_blob"] = build_search_blob(columns)
 
-    names = list(columns)
-    placeholders = ", ".join("?" for _ in names)
-    execute(
-        f"INSERT INTO projects ({', '.join(names)}) VALUES ({placeholders})",
-        tuple(columns[n] for n in names),
-    )
-    for reason in reasons:
-        execute(
-            "INSERT OR IGNORE INTO project_full_route_reasons"
-            " (project_id, reason, added_at, added_by) VALUES (?, ?, ?, ?)",
-            (project_id, reason, now, user_id),
+    names = [n for n in columns if n != "code"]
+    # Номер вычисляется внутри транзакции: см. next_project_code.
+    with transaction() as conn:
+        code = next_project_code(conn=conn)
+        all_names = names + ["code"]
+        placeholders = ", ".join("?" for _ in all_names)
+        conn.execute(
+            f"INSERT INTO projects ({', '.join(all_names)}) VALUES ({placeholders})",
+            tuple(columns[n] for n in names) + (code,),
         )
+        for reason in reasons:
+            conn.execute(
+                "INSERT OR IGNORE INTO project_full_route_reasons"
+                " (project_id, reason, added_at, added_by) VALUES (?, ?, ?, ?)",
+                (project_id, reason, now, user_id),
+            )
     return {"id": project_id, "code": code, "route": route_auto,
             "route_auto": route_auto, "route_reasons": reasons,
             "rejected_fields": rejected}
@@ -654,14 +660,14 @@ def card_validation_report(project_id: str, project: dict) -> dict:
     """Точный перечень незаполненных полей + ограничения длины (FR-07)."""
     counts = related_counts(project_id)
     missing = missing_required_fields(
-        {k: project.get(k) for k in EDITABLE_FIELDS},
+        project,
         team_size=counts["team"], milestone_count=counts["milestones"],
         partner_count=counts["partners"],
     )
     return {
         "missing_required": missing,
         "missing_count": len(missing),
-        "length_problems": validate_lengths({k: project.get(k) for k in EDITABLE_FIELDS}),
+        "length_problems": validate_lengths(project),
         "route": project["route"],
         "counts": counts,
     }

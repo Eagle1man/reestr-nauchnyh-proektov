@@ -379,19 +379,6 @@ def test_api_transition_endpoint_lists_allowed_actions(api, project, users, set_
     assert card["actions"] == body["actions"]
 
 
-@pytest.mark.xfail(
-    reason="НАСТОЯЩИЙ КРИТИЧЕСКИЙ БАГ (FR-05/FR-07/FR-10): services.projects."
-           "build_context() передаёт в missing_required_fields() только ключи "
-           "EDITABLE_FIELDS, а program_id и leader_person_id в этот список НЕ "
-           "входят. Поля объявлены обязательными в PASSPORT_COMMON, поэтому "
-           "проверка комплектности всегда считает их незаполненными — даже "
-           "когда они заполнены. Через API их и не заполнить: PATCH "
-           "фильтрует поля по тому же белому списку. Следствие: действия "
-           "submit и assign_review заблокированы ВСЕГДА, ни один проект не "
-           "может уйти из статуса ST-01 «Черновик». Обходной путь в коде "
-           "отсутствует.",
-    strict=True,
-)
 def test_api_successful_transition_changes_status_and_keeps_history(api, project, users,
                                                                     set_status):
     """Разрешённый переход меняет статус, и это попадает в журнал (FR-10, FR-23)."""
@@ -425,15 +412,6 @@ def test_api_terminal_statuses_have_no_outgoing_transitions(api, project, users)
     assert scalar("SELECT COUNT(*) FROM projects", (), 0) == 1
 
 
-@pytest.mark.xfail(
-    reason="НАСТОЯЩИЙ КРИТИЧЕСКИЙ БАГ (FR-07): тот же дефект, что и в "
-           "test_api_successful_transition_changes_status_and_keeps_history. "
-           "Отчёт о комплектности карточки (services.projects."
-           "card_validation_report) строится по ключам EDITABLE_FIELDS и не "
-           "видит program_id и leader_person_id, поэтому показывает "
-           "заполненные поля как незаполненные.",
-    strict=True,
-)
 def test_completeness_report_ignores_filled_program_and_leader(api, project, users):
     """Заполненные программа и руководитель не должны попадать в список
     незаполненных полей (FR-07)."""
