@@ -1,0 +1,29 @@
+# Ежедневное резервное копирование (п.11.4 ТЗ).
+# Не реже одного раза в сутки: RPO не более 24 часов.
+#
+#   cp deploy/systemd/registry-backup.{service,timer} /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now registry-backup.timer
+#   systemctl list-timers registry-backup.timer
+
+[Unit]
+Description=Ежедневная резервная копия реестра научных проектов
+After=registry.service
+
+[Service]
+Type=oneshot
+User=registry
+Group=registry
+WorkingDirectory=/opt/registry
+EnvironmentFile=/opt/registry/.env
+
+# Скрипт сам проверит, что копия за сегодня уже создана, и выйдет без ошибки.
+ExecStart=/opt/registry/.venv/bin/python backend/scripts/backup.py
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=registry-backup
+
+# Копия не должна мешать работе системы.
+Nice=10
+IOSchedulingClass=idle
+CPUSchedulingPolicy=idle

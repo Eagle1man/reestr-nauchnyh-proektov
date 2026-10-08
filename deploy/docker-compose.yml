@@ -1,0 +1,82 @@
+# Развёртывание реестра в контейнере.
+#
+# Вариант для согласования с владельцем сервера (вопрос 3 ТЗ). Основной
+# сценарий — systemd + nginx (deploy/systemd, deploy/nginx); контейнерный
+# вариант нужен там, где инфраструктура работает только в Docker.
+#
+# Состав:
+#   registry    — приложение FastAPI, собирается из репозитория
+#   backups     — том для резервных копий, отдельный от данных
+#
+# Обещания доступности (NFR-06: не менее 99% в рабочие дни 08:00–20:00 МСК)
+# обеспечиваются перезапуском контейнера, а не рестартом всего узла.
+
+name: registry
+
+services:
+  registry:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: registry-app:1.0.0
+    restart: unless-stopped
+    # Наружу контейнер не публикуется: доступ только через обратный прокси
+    # (п.3.1, п.3.2 п.3). Порт в Compose нужен только healthcheck.
+    expose:
+      - "8000"
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_PATH: /app/data/registry.db
+      BACKUP_DIR: /app/backups
+      DEBUG: "false"
+    volumes:
+      - registry-data:/app/data
+      - registry-backups:/app/backups
+    healthcheck:
+      # Приложение не публикует служебные пути в /health — только статус.
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    # Приложение не нуждается в привилегиях.
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # Разовый контейнер для резервного копирования по расписанию.
+  # Запуск: docker compose run --rm backup
+  backup:
+    image: registry-app:1.0.0
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    profiles: ["tools"]
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_PATH: /app/data/registry.db
+      BACKUP_DIR: /app/backups
+      DEBUG: "false"
+    volumes:
+      - registry-data:/app/data
+      - registry-backups:/app/backups
+    entrypoint: ["python", "backend/scripts/backup.py"]
+    restart: "no"
+
+volumes:
+  registry-data:
+    name: registry-data
+  registry-backups:
+    name: registry-backups

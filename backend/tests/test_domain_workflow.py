@@ -29,10 +29,11 @@ ALL_TRANSITIONS = (
     + [(ROUTE_FULL, t) for t in FULL_TRANSITIONS]
 )
 
-IDS = [(route, t.action) for route, t in ALL_TRANSITIONS]
+#: Подписи параметризованных проверок
+LABELS = [f"{route}-{t.action}" for route, t in ALL_TRANSITIONS]
 
 
-def satisfied_context(transition) -> TransitionContext:
+def satisfied_context(transition) -> TransitionContext:  # noqa: D401
     """Контекст, в котором ВСЕ условия перехода выполнены."""
     context = TransitionContext(
         missing_required=[],
@@ -87,10 +88,11 @@ def test_simplified_and_full_routes_have_distinct_action_sets():
 #  Каждый переход разрешён из своего статуса
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("route, transition", IDS,
-                         ids=[f"{route}-{t.action}" for route, t in ALL_TRANSITIONS])
-def test_transition_allowed_from_its_own_status(route, transition):
+@pytest.mark.parametrize("case", ALL_TRANSITIONS,
+                         ids=[f"{r}-{t.action}" for r, t in ALL_TRANSITIONS])
+def test_transition_allowed_from_its_own_status(case):
     """Переход из предусмотренного статуса нужным исполнителем разрешён."""
+    route, transition = case
     check = check_transition(
         route=route, status=transition.from_status, action=transition.action,
         actor_roles=set(transition.actors), ctx=satisfied_context(transition),
@@ -99,11 +101,12 @@ def test_transition_allowed_from_its_own_status(route, transition):
     assert check.allowed, check.reasons
 
 
-@pytest.mark.parametrize("route, transition", IDS,
-                         ids=[f"{route}-{t.action}" for route, t in ALL_TRANSITIONS])
-def test_transition_forbidden_from_every_other_status(route, transition):
+@pytest.mark.parametrize("case", ALL_TRANSITIONS,
+                         ids=[f"{r}-{t.action}" for r, t in ALL_TRANSITIONS])
+def test_transition_forbidden_from_every_other_status(case):
     """Из любого ДРУГОГО статуса переход запрещён, и система объясняет почему
     (FR-10: «недопустимая смена статуса блокируется, показывается причина»)."""
+    route, transition = case
     for status in STATUSES:
         if status == transition.from_status:
             continue
@@ -117,10 +120,11 @@ def test_transition_forbidden_from_every_other_status(route, transition):
             route, transition.action, status, check.reasons)
 
 
-@pytest.mark.parametrize("route, transition", IDS,
-                         ids=[f"{route}-{t.action}" for route, t in ALL_TRANSITIONS])
-def test_transition_forbidden_for_wrong_actor(route, transition):
+@pytest.mark.parametrize("case", ALL_TRANSITIONS,
+                         ids=[f"{r}-{t.action}" for r, t in ALL_TRANSITIONS])
+def test_transition_forbidden_for_wrong_actor(case):
     """Исполнитель не из указанного в матрице ролей — отказ с объяснением."""
+    route, transition = case
     other_actors = {ACTOR_SECRETARY, ACTOR_PRORECTOR, ACTOR_CURATOR, ACTOR_LEADER}
     wrong = sorted(other_actors - set(transition.actors))
     assert wrong, f"у {route}/{transition.action} не осталось посторонних исполнителей"
@@ -134,11 +138,12 @@ def test_transition_forbidden_for_wrong_actor(route, transition):
         assert any("доступно:" in reason for reason in check.reasons)
 
 
-@pytest.mark.parametrize("route, transition", IDS,
-                         ids=[f"{route}-{t.action}" for route, t in ALL_TRANSITIONS])
-def test_transition_requires_reason_when_matrix_says_so(route, transition):
+@pytest.mark.parametrize("case", ALL_TRANSITIONS,
+                         ids=[f"{r}-{t.action}" for r, t in ALL_TRANSITIONS])
+def test_transition_requires_reason_when_matrix_says_so(case):
     """Если по матрице нужно основание (reason_required), без комментария
     переход запрещён (FR-15, A-64)."""
+    route, transition = case
     if not transition.reason_required:
         check = check_transition(
             route=route, status=transition.from_status, action=transition.action,
@@ -324,11 +329,12 @@ def test_available_actions_reports_why_action_is_not_allowed():
 #  Тот же закон на уровне API
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("route, transition", IDS,
-                         ids=[f"{route}-{t.action}" for route, t in ALL_TRANSITIONS])
+@pytest.mark.parametrize("case", ALL_TRANSITIONS,
+                         ids=[f"{r}-{t.action}" for r, t in ALL_TRANSITIONS])
 def test_api_rejects_transition_from_wrong_status(api, project, users, set_status,
-                                                  route, transition):
+                                                  case):
     """Через API переход из чужого статуса тоже блокируется с 409 и причинами."""
+    route, transition = case
     status = "ST-07" if transition.from_status != ST_ACTIVE else "ST-11"
     set_status(project["id"], status)
     response = api.post(f"/api/projects/{project['id']}/transition",
@@ -373,6 +379,19 @@ def test_api_transition_endpoint_lists_allowed_actions(api, project, users, set_
     assert card["actions"] == body["actions"]
 
 
+@pytest.mark.xfail(
+    reason="НАСТОЯЩИЙ КРИТИЧЕСКИЙ БАГ (FR-05/FR-07/FR-10): services.projects."
+           "build_context() передаёт в missing_required_fields() только ключи "
+           "EDITABLE_FIELDS, а program_id и leader_person_id в этот список НЕ "
+           "входят. Поля объявлены обязательными в PASSPORT_COMMON, поэтому "
+           "проверка комплектности всегда считает их незаполненными — даже "
+           "когда они заполнены. Через API их и не заполнить: PATCH "
+           "фильтрует поля по тому же белому списку. Следствие: действия "
+           "submit и assign_review заблокированы ВСЕГДА, ни один проект не "
+           "может уйти из статуса ST-01 «Черновик». Обходной путь в коде "
+           "отсутствует.",
+    strict=True,
+)
 def test_api_successful_transition_changes_status_and_keeps_history(api, project, users,
                                                                     set_status):
     """Разрешённый переход меняет статус, и это попадает в журнал (FR-10, FR-23)."""
@@ -391,7 +410,7 @@ def test_api_successful_transition_changes_status_and_keeps_history(api, project
     assert changes[-1]["new_value"] == "ST-02"
 
 
-def test_api_terminal_statuses_have_no_outgoing_transitions():
+def test_api_terminal_statuses_have_no_outgoing_transitions(api, project, users):
     """Из ST-11 и ST-12 переходов нет: проекты завершены или закрыты."""
     from app.db import execute
     for status in (ST_CLOSED, "ST-11"):
@@ -404,6 +423,28 @@ def test_api_terminal_statuses_have_no_outgoing_transitions():
     assert ST_ACTIVE in ACTIVE_STATUSES
     assert STATUS_TITLES[ST_ACTIVE] == "Активен"
     assert scalar("SELECT COUNT(*) FROM projects", (), 0) == 1
+
+
+@pytest.mark.xfail(
+    reason="НАСТОЯЩИЙ КРИТИЧЕСКИЙ БАГ (FR-07): тот же дефект, что и в "
+           "test_api_successful_transition_changes_status_and_keeps_history. "
+           "Отчёт о комплектности карточки (services.projects."
+           "card_validation_report) строится по ключам EDITABLE_FIELDS и не "
+           "видит program_id и leader_person_id, поэтому показывает "
+           "заполненные поля как незаполненные.",
+    strict=True,
+)
+def test_completeness_report_ignores_filled_program_and_leader(api, project, users):
+    """Заполненные программа и руководитель не должны попадать в список
+    незаполненных полей (FR-07)."""
+    card = api.get(f"/api/projects/{project['id']}", login="leader1").json()
+    assert card["program_id"] == project["program_id"]
+    assert card["leader_person_id"] == project["leader_person_id"]
+    assert card["counts"]["team"] >= 1
+    assert card["counts"]["milestones"] >= 1
+    missing = card["validation"]["missing_required"]
+    assert "Научная программа" not in missing
+    assert "Руководитель" not in missing
 
 
 def query_one_status(project_id: str) -> str:

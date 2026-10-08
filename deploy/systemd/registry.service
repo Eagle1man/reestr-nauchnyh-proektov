@@ -1,0 +1,82 @@
+# Служба приложения «Реестр научных проектов» (п.3.2 ТЗ).
+#
+# Установка:
+#   useradd --system --home /opt/registry --shell /usr/sbin/nologin registry
+#   mkdir -p /opt/registry
+#   # скопировать репозиторий в /opt/registry и перейти в него
+#   cd /opt/registry
+#   python3 -m venv .venv && .venv/bin/pip install -r backend/requirements.txt
+#   cp .env.example .env   # затем заполнить SECRET_KEY и параметры
+#   chown -R registry:registry /opt/registry
+#   cp deploy/systemd/registry.service /etc/systemd/system/
+#   systemctl daemon-reload
+#   systemctl enable --now registry
+#   systemctl status registry
+#
+# Приложение слушает 127.0.0.1:8000: наружу публикуется только обратным
+# прокси, база данных и служебные интерфейсы в сеть Интернет не выходят
+# (п.3.1, п.3.2 п.3).
+
+[Unit]
+Description=Реестр научных проектов Южного университета (ИУБиП)
+Documentation=file:/opt/registry/docs/РУКОВОДСТВО-ТЕХНИЧЕСКОГО-АДМИНИСТРАТОРА.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=registry
+Group=registry
+WorkingDirectory=/opt/registry
+
+EnvironmentFile=/opt/registry/.env
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+
+# Ключ подписи сессий должен быть в .env. Отдельно проверяем, что он задан:
+# иначе приложение не стартует, а не молча работает с временным ключом.
+ExecStartPre=/opt/registry/.venv/bin/python -c \
+  "import os,sys; sys.path.insert(0,'/opt/registry/backend'); \
+   from app.config import settings; \
+   sys.exit(0 if settings.secret_key and len(settings.secret_key) >= 32 else 1)"
+
+ExecStart=/opt/registry/.venv/bin/python -m uvicorn app.main:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --workers 2 \
+    --proxy-headers \
+    --forwarded-allow-ips='127.0.0.1' \
+    --no-server-header \
+    --app-dir /opt/registry/backend
+
+Restart=on-failure
+RestartSec=5
+
+# Ограничение ресурсов. Значения согласуются с владельцем сервера
+# (вопрос 3 ТЗ: серверная конфигурация на согласовании).
+MemoryMax=2G
+CPUQuota=200%
+
+# Ужесточённая безопасность службы.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadWritePaths=/opt/registry/backend/data /opt/registry/backups /opt/registry/storage
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+
+# Журналы: stderr приложения уходит в journald. Секреты в журналы не
+# попадают — это обеспечено кодом (SEC-05).
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=registry
+
+[Install]
+WantedBy=multi-user.target

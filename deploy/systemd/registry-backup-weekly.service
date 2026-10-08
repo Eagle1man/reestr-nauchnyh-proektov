@@ -1,0 +1,35 @@
+# Еженедельная копия в отдельное защищённое хранилище (п.11.4 ТЗ).
+#
+# Ежедневные копии хранятся не менее 30 календарных дней; недельная копия
+# должна лежать ОТДЕЛЬНО от них, чтобы потеря сервера не уничтожила всё.
+# Скопируйте на носитель, вынесенный за пределы сервера:
+#   .venv/bin/python backend/scripts/backup.py --weekly
+#   # затем перенесите свежий registry-weekly-*.sqlite3 на внешний носитель.
+#
+# Здесь вариант с rsync в отдельный каталог/том:
+#   cp deploy/systemd/registry-backup-weekly.{service,timer} /etc/systemd/system/
+
+[Unit]
+Description=Еженедельная резервная копия реестра в отдельное хранилище
+After=registry.service
+
+[Service]
+Type=oneshot
+User=registry
+Group=registry
+WorkingDirectory=/opt/registry
+EnvironmentFile=/opt/registry/.env
+
+ExecStart=/opt/registry/.venv/bin/python backend/scripts/backup.py --weekly
+# Копия забирается на отдельный носитель. Каталог назначения — на согласовании
+# с владельцем инфраструктуры.
+# ExecStartPost=/usr/bin/rsync -a --remove-shorter \
+#     /opt/registry/backups/registry-weekly-*.sqlite3 \
+#     /mnt/registry-offsite/registry/
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=registry-backup-weekly
+
+[Install]
+WantedBy=multi-user.target
