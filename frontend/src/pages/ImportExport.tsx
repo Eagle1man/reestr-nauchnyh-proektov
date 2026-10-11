@@ -62,6 +62,11 @@ export default function ImportExportPage() {
       form.append('file', source);
       form.append('confirm', confirm ? 'true' : 'false');
       if (expectedRows.trim()) form.append('expected_rows', expectedRows.trim());
+      // При подтверждении возвращаем тот же идентификатор пакета, что показали
+      // в предпросмотре. Без этого сервер считает загрузку новой: в списке
+      // остаётся предпросмотр без подтверждения и появляется второй пакет,
+      // хотя загрузка была одна (п.7.2 п.6).
+      if (confirm && preview) form.append('batch_id', preview.batch_id);
       const result = await upload<Preview>('/api/import/preview', form);
       setPreview(result);
       setDone(result.created);

@@ -425,6 +425,40 @@ def test_completeness_report_ignores_filled_program_and_leader(api, project, use
     assert "Руководитель" not in missing
 
 
+def test_missing_fields_are_named_like_appendix_a(api, project, users):
+    """FR-07, п.10.2 п.1: незаполненные поля показываются названиями Приложения А.
+
+    Проверка найдена на интерфейсе: одна позиция Приложения А закрывает два поля
+    карточки («Плановые даты» = planned_start и planned_end), и название искалось
+    сравнением со строкой целиком. Объединённые поля не находились, и
+    пользователю показывалось служебное `planned_start` вместо «Плановое начало».
+    """
+    card = api.get(f"/api/projects/{project['id']}", login="leader1").json()
+    missing = card["validation"]["missing_required"]
+    assert all("_" not in item for item in missing), (
+        f"в списке незаполненных есть имена столбцов: {missing}")
+    # Плановые даты объединяют два поля, поэтому у каждого своё название —
+    # иначе пользователь не поймёт, какое именно из них заполнять.
+    if not card["planned_start"]:
+        assert "Плановое начало (A-11)" in missing
+    if not card["planned_end"]:
+        assert "Плановое завершение (A-11)" in missing
+
+
+def test_card_shows_program_title_not_identifier(api, project, users):
+    """п.10.2 п.1: в карточке показывается название программы, а не её UUID.
+
+    Найдено на интерфейсе: список проектов отдавал название программы, а
+    карточка — внутренний идентификатор, и это выглядело как ошибка.
+    """
+    from app.db import query_one
+    card = api.get(f"/api/projects/{project['id']}", login="leader1").json()
+    program = query_one("SELECT code, title FROM programs WHERE id = ?",
+                        (project["program_id"],))
+    assert card["program_title"] == program["title"]
+    assert card["program_code"] == program["code"]
+
+
 def query_one_status(project_id: str) -> str:
     from app.db import query_one
     return query_one("SELECT status FROM projects WHERE id = ?", (project_id,))["status"]

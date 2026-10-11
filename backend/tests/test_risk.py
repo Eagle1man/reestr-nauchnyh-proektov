@@ -89,6 +89,34 @@ def test_red_when_milestone_overdue_more_than_twenty_working_days():
 #  Порог ровно 20 рабочих дней
 # ---------------------------------------------------------------------------
 
+def test_delay_counts_working_days_in_half_open_interval():
+    """Задержка — это рабочие дни в промежутке (плановая, сегодня].
+
+    Проверка на фиксированных датах, чтобы не зависеть от дня запуска.
+    Плановая пятница 11.09.2026: просрочка растёт только по рабочим дням, поэтому
+    в пятницу 09.10 это 20 рабочих дней, в субботу 10.10 — те же 20, а в понедельник
+    12.10 — уже 21.
+    """
+    assert working_days_between(date(2026, 9, 11), date(2026, 10, 9)) == 20
+    assert working_days_between(date(2026, 9, 11), date(2026, 10, 10)) == 20
+    assert working_days_between(date(2026, 9, 11), date(2026, 10, 12)) == 21
+    assert working_days_between(date(2026, 9, 11), date(2026, 9, 11)) == 0
+
+
+def test_working_days_ago_is_inverse_of_the_working_count(ago):
+    """Счётчик назад обязан быть обратной операцией к рабочему счёту.
+
+    Урок отдела: счётчик, который просто отсчитывает рабочие дни назад от
+    сегодняшней даты, расходится с working_days_between на единицу в те дни,
+    когда сегодня выходной, — проверки просрочки падали только по выходным.
+    """
+    for days in (1, 2, 5, 19, 20, 21, 60):
+        planned = date.fromisoformat(ago(days))
+        assert working_days_between(planned, TODAY) == days, (
+            f"для {days} рабочих дней получилось "
+            f"{working_days_between(planned, TODAY)}")
+
+
 @pytest.mark.parametrize("delay, expected", [
     (1, RISK_YELLOW),
     (DELAY_YELLOW_DAYS - 1, RISK_YELLOW),

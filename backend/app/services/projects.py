@@ -685,4 +685,11 @@ def project_card(project_id: str) -> dict:
     card["validation"] = card_validation_report(project_id, card)
     card["created_by_login"] = scalar(
         "SELECT login FROM users WHERE id = ?", (card.get("created_by"),), None)
+    # Название программы, а не её идентификатор: в списке программа уже
+    # показывалась названием, а в карточке выводился UUID — это выглядело как
+    # ошибка и было нечитаемо для пользователя (п.10.2 п.1).
+    program = query_one("SELECT code, title FROM programs WHERE id = ?",
+                        (card.get("program_id"),))
+    card["program_code"] = program["code"] if program else None
+    card["program_title"] = (program["title"] if program else None) or ""
     return card

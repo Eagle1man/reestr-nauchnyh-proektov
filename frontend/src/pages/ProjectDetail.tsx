@@ -277,7 +277,10 @@ function PassportTab({ card, reload }: {
           <Detail items={[
             ['Номер (A-01)', <span className="mono">{card.code}</span>],
             ['Научная программа (A-05)',
-              card.program_id],
+              // Название, а не внутренний идентификатор: программа архивируется,
+              // и тогда показываем её код, чтобы карточку можно было опознать.
+              card.program_title
+                || (card.program_code ? `${card.program_code} (архивная программа)` : '—')],
             ['Маршрут (A-07)',
               `${card.route === 'full' ? 'Полный' : 'Упрощённый'}${
                 card.route !== card.route_auto

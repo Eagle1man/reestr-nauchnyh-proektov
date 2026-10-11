@@ -75,6 +75,12 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .topbar__nav a:hover { background: rgba(255, 255, 255, 0.14); }
 .topbar__nav a.active { background: rgba(255, 255, 255, 0.24); font-weight: 600; }
 
+/* Ссылки справа — имя пользователя и переход в открытый раздел. Без своего
+   цвета они наследуют синий браузера: на тёмно-синей шапке (#17486a) контраст
+   падает примерно до 1:1, и текст не читается (п.10.2 п.6). */
+.topbar__user a { color: #fff; text-decoration: none; }
+.topbar__user a:hover { text-decoration: underline; }
+
 .main { flex: 1; padding: 16px; max-width: 1500px; width: 100%; margin: 0 auto; }
 .main--wide { max-width: none; }
 

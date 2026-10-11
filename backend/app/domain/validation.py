@@ -243,6 +243,25 @@ FIELD_DICTIONARY: Final[dict[str, dict[str, str]]] = {
              "validation": "Автоматически; не редактируется"},
 }
 
+#: Название поля для показа пользователю: столбец → название из Приложения А.
+#: Индекс строится по КАЖДОМУ столбцу отдельно: одна позиция Приложения А
+#: иногда закрывает несколько полей («planned_start, planned_end», «id, code»).
+#: Раньше название искалось сравнением со строкой целиком, поэтому объединённые
+#: поля не находились и пользователю показывалось `planned_start` — служебное
+#: имя вместо «Плановое начало».
+FIELD_LABELS: Final[dict[str, str]] = {
+    column.strip(): meta["label"]
+    for meta in FIELD_DICTIONARY.values()
+    for column in meta["field"].split(",")
+}
+
+#: Уточнения там, где одна позиция Приложения А закрывает два разных поля
+#: карточки: пользователю нужно знать, КАКОЕ из них заполнить.
+COLUMN_LABEL_OVERRIDES: Final[dict[str, str]] = {
+    "planned_start": "Плановое начало (A-11)",
+    "planned_end": "Плановое завершение (A-11)",
+}
+
 #: Шесть обязательных научных полей (допущение зафиксировано в модуле docstring)
 SCIENTIFIC_CORE: Final[tuple[str, ...]] = ("problem", "question", "goal",
                                            "methods", "data_basis", "result_criteria")
@@ -341,10 +360,10 @@ def missing_required_fields(
     missing: list[str] = []
 
     def label_for(column: str) -> str:
-        for meta in FIELD_DICTIONARY.values():
-            if meta["field"] == column:
-                return meta["label"]
-        return column
+        # Сначала уточнение (одна позиция Приложения А на два поля карточки),
+        # затем название позиции, и только в крайнем случае — имя столбца.
+        return (COLUMN_LABEL_OVERRIDES.get(column)
+                or FIELD_LABELS.get(column) or column)
 
     for column in required_fields_for(route):
         if _empty(project.get(column)):

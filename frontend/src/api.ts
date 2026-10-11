@@ -289,6 +289,8 @@ export interface ProjectCard {
   flags?: Record<string, number>;
   full_route_reasons: string[];
   full_route_reasons_detail: { code: string; title: string }[];
+  program_code: string | null;
+  program_title: string;
   counts: {
     team: number; milestones: number; risks: number; results: number;
     reviews: number; decisions: number; partners: number; materials: number;
