@@ -1,5 +1,6 @@
 import { NavLink, Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { useAuth } from './auth';
+import ErrorReportButton from './components/ErrorReportButton';
 import { ErrorAlert } from './components/ui';
 import AdminPage from './pages/Admin';
 import DashboardPage from './pages/Dashboard';
@@ -82,7 +83,8 @@ function Shell() {
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <Routes>
       {/* Открытая витрина раздела «Наука» — без входа (п.9.1) */}
       <Route path="/public" element={<PublicPage />} />
 
@@ -107,6 +109,10 @@ export default function App() {
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      </Routes>
+      {/* Кнопка отчёта доступна на любой странице, включая экран входа:
+          именно там человек чаще всего видит непонятную ошибку. */}
+      <ErrorReportButton />
+    </>
   );
 }

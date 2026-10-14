@@ -10,6 +10,8 @@ API возвращает пароль ОДИН раз, в момент созд�
 
 from __future__ import annotations
 
+import platform
+from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -305,6 +307,44 @@ def update_dict_item(item_id: str, body: DictItemBody, actor: CurrentActor):
 
 class SettingsBody(BaseModel):
     values: dict[str, Any]
+
+
+@router.get("/diagnostics")
+def get_diagnostics(actor: CurrentActor):
+    """Отчёт для разработчика: что сломалось на этой установке.
+
+    Собирает ошибки сервера (круг в памяти) и сведения о сборке. Пароли,
+    ключи и содержимое базы сюда не попадают: это материал для отправки
+    разработчику, и лишнее в нём было бы утечкой (SEC-05).
+    """
+    _require_admin(actor)
+    from .. import errors as error_log
+
+    return {
+        "server": error_log.summary(),
+        "recent_errors": error_log.recent(limit=100),
+        "environment": {
+            "app_name": settings.app_name,
+            "debug": settings.debug,
+            "python": platform.python_version(),
+            "platform": platform.platform(),
+            "database": Path(settings.db_file).name,
+            "backup_dir": settings.backup_dir,
+        },
+        "note": "Ошибки живут в памяти процесса и сбрасываются при перезапуске. "
+                "Это осознанно: наружу сервер ничего не отправляет, отчёт "
+                "забирает и увозит сам пользователь.",
+    }
+
+
+@router.post("/diagnostics/clear")
+def clear_diagnostics(actor: CurrentActor):
+    """Очистить собранные ошибки после разбора."""
+    _require_admin(actor)
+    from .. import errors as error_log
+
+    error_log.clear()
+    return {"ok": True}
 
 
 @router.get("/settings")

@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from . import errors
 from .config import BASE_DIR, settings
 
 logger = logging.getLogger("registry")
@@ -96,11 +97,19 @@ async def unhandled_handler(request: Request, exc: Exception):
     """Внутренняя ошибка не должна выдавать служебные подробности (ПС-01).
 
     Подробности — в журнал сервера, наружу — нейтральный текст и
-    идентификатор для поиска по журналу.
+    идентификатор для поиска по журналу. Дополнительно ошибка кладётся
+    в круг app.errors, откуда её забирает отчёт для разработчика: иначе
+    пользователь пришлёт нам только код, а расшифровать его можно лишь
+    на этой машине.
     """
     import uuid as _uuid
     ref = str(_uuid.uuid4())[:8]
     logger.exception("Необработанная ошибка [%s] на %s %s", ref, request.method, request.url.path)
+    try:
+        errors.record("server", f"{type(exc).__name__}: {exc}",
+                      reference=ref, path=f"{request.method} {request.url.path}")
+    except Exception:  # noqa: BLE001 — сбор ошибок не должен ломать ответ
+        logger.exception("не удалось записать ошибку в круг сбора [%s]", ref)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"error": "Внутренняя ошибка сервера",

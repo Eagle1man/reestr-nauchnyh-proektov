@@ -6,6 +6,8 @@
  * CSRF-токен не требуется. Решение зафиксировано в документации.
  */
 
+import { captureApiFailure } from './errors';
+
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '';
 
 const TOKEN_KEY = 'rnp.token';
@@ -82,13 +84,37 @@ export async function api<T = unknown>(path: string, options: RequestOptions = {
   }
 
   if (raw) {
-    if (!response.ok) throw new ApiError(response.status, await safeJson(response));
+    if (!response.ok) {
+      const payload = await safeJson(response);
+      reportFailure(path, response.status, payload);
+      throw new ApiError(response.status, payload);
+    }
     return (await response.blob()) as T;
   }
 
   const data = await safeJson(response);
-  if (!response.ok) throw new ApiError(response.status, data);
+  if (!response.ok) {
+    reportFailure(path, response.status, data);
+    throw new ApiError(response.status, data);
+  }
   return data as T;
+}
+
+/**
+ * Кладёт неудачный запрос в отчёт разработчику.
+ *
+ * Отдельно выписаны 500 и 422: это единственные коды, по которым видно
+ * САМ дефект (сервер назвал код обращения / перечислил проблемные поля).
+ * 401 — обычное истечение сессии, 404 на необязательных разделах и 422 при
+ * неверном вводе относятся к действиям человека, а не к поломке системы,
+ * и в отчёте только засоряли бы разбор.
+ */
+function reportFailure(path: string, status: number, payload: unknown): void {
+  if (status !== 500 && status !== 422) return;
+  const body = payload as { reference?: string; error?: string; detail?: string } | null;
+  const reference = body?.reference;
+  const detail = body?.error ?? body?.detail ?? (typeof payload === 'string' ? payload : undefined);
+  captureApiFailure(path, status, reference, detail);
 }
 
 async function safeJson(response: Response): Promise<unknown> {
