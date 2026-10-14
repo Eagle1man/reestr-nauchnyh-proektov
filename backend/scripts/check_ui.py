@@ -1,10 +1,22 @@
-"""Проверка: SPA отдаётся сервером, API живой, публичная витрина работает."""
+"""Проверка: SPA отдаётся сервером, API живой, публичная витрина работает.
+
+    python backend/scripts/check_ui.py <адрес> <пароль>
+
+Пароль передаётся аргументом или переменной CHECK_UI_PASSWORD. В коде его
+нет намеренно: скрипт попадает в публичный репозиторий, и зашитый пароль
+стал бы опубликованным секретом (SEC-05).
+"""
+import os
 import sys
 
 import httpx
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8077"
-PASSWORD = sys.argv[2] if len(sys.argv) > 2 else "Pilot-2026-Strong!"
+PASSWORD = sys.argv[2] if len(sys.argv) > 2 else os.environ.get("CHECK_UI_PASSWORD", "")
+if not PASSWORD:
+    raise SystemExit(
+        "Пароль не задан. Передайте его вторым аргументом или через "
+        "CHECK_UI_PASSWORD: пароль не должен лежать в коде.")
 
 ok = 0
 bad = 0

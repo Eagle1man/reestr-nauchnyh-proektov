@@ -239,15 +239,17 @@ def test_parallel_mixed_reads_and_writes(api, make_project, users, program):
 def test_parallel_requests_do_not_return_500(api, make_project, users):
     """Внутренние ошибки при параллельной работе недопустимы.
 
-    Замечание: /api/projects/taxonomy здесь намеренно не вызывается — на нём
-    известный дефект (см. test_domain_workflow), из-за которого TestClient
-    поднимает исключение, а не отдаёт 500.
+    Раньше /api/projects/taxonomy намеренно не обходился: на нём был
+    дефект с 500, и его скрыли исключением из списка, а не починили.
+    Дефект закрыт 14.10.2026 (backend/tests/test_taxonomy_endpoint.py),
+    поэтому адрес вернулся в обход — иначе проверка снова станет слепой
+    к этому классу ошибок.
     """
     for index in range(3):
         make_project(title=unique_title(index))
     headers = {"Authorization": f"Bearer {api.login('secretary')}"}
     paths = ["/api/dashboard", "/api/projects", "/api/reminders",
-             "/api/reports/overdue", "/api/audit"]
+             "/api/reports/overdue", "/api/audit", "/api/projects/taxonomy"]
 
     def request(index: int) -> int:
         return api.client.get(paths[index % len(paths)], headers=headers).status_code

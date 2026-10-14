@@ -9,12 +9,20 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 
 import httpx
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8000"
-PASSWORD = sys.argv[2] if len(sys.argv) > 2 else "Pilot-2026-Strong!"
+# Пароль передаётся аргументом или переменной SMOKE_PASSWORD: в коде его нет
+# намеренно, иначе он станет опубликованным секретом вместе с репозиторием.
+PASSWORD = (sys.argv[2] if len(sys.argv) > 2
+            else os.environ.get("SMOKE_PASSWORD", ""))
+if not PASSWORD:
+    raise SystemExit(
+        "Пароль не задан. Передайте его вторым аргументом или через "
+        "SMOKE_PASSWORD: пароль не должен лежать в коде.")
 
 PASS, FAIL = 0, 0
 FAILURES: list[str] = []

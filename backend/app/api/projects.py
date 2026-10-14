@@ -11,8 +11,8 @@ from .. import audit
 from ..access import AccessDenied, attach_relations, can_edit_card, can_view_project
 from ..db import execute, query, query_one
 from ..domain.taxonomy import (
-    ACTIVE_STATUSES, FULL_ROUTE_TITLES, PUBLISH_MODES, ROUTES, RISK_TITLES,
-    ROUTE_RULE, STATUS_TITLES, STATUSES,
+    ACTIVE_STATUSES, FULL_ROUTE_TITLES, FULL_ROUTE_TRIGGERS, PUBLISH_MODES,
+    ROUTES, RISK_TITLES, ROUTE_RULE, STATUS_TITLES, STATUSES,
 )
 from ..domain.validation import FIELD_DICTIONARY
 from ..services import projects as svc
@@ -130,8 +130,11 @@ def taxonomy(actor: CurrentActor):
     return {
         "statuses": [{"code": k, **v} for k, v in STATUSES.items()],
         "routes": ROUTES,
+        # Именно FULL_ROUTE_TRIGGERS, а не FULL_ROUTE_TITLES: интерфейс ждёт
+        # у признака и заголовок, и список полей, а FULL_ROUTE_TITLES содержит
+        # только заголовок. С FULL_ROUTE_TITLES этот разворот падал с 500.
         "full_route_triggers": [
-            {"code": code, **spec} for code, spec in FULL_ROUTE_TITLES.items()
+            {"code": code, **spec} for code, spec in FULL_ROUTE_TRIGGERS.items()
         ],
         "route_rule": ROUTE_RULE,
         "publish_modes": PUBLISH_MODES,
