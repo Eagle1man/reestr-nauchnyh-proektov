@@ -10,7 +10,11 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './auth';
+import { installDemoMode } from './demo/mock';
 import './styles.css';
+
+// Только при сборке с VITE_DEMO=1. В обычной сборке подмены запросов нет.
+installDemoMode();
 
 const container = document.getElementById('root');
 if (!container) throw new Error('Не найден элемент #root в index.html');
