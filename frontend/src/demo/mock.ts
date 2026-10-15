@@ -128,15 +128,101 @@ function createProject(body: Body): Outcome | null {
   });
 }
 
-/** Правка полей карточки. */
+/**
+ * Правка полей карточки.
+ *
+ * Форма ответа повторяет боевой PATCH (`api/projects.py`): { ok, changed,
+ * version, card }. Страница паспорта читает из неё version и changed.length —
+ * прежний ответ-карточка ронял сохранение с сообщением «Cannot read
+ * properties of undefined (reading 'length')».
+ *
+ * Проверка версии — та же, что на сервере: при расхождении 409, а не тихая
+ * перезапись. Отклонения по правам и по составу редактируемых полей демо НЕ
+ * выдумывает: снимок матрицы прав не содержит, а показать отказ там, где
+ * боевая система приняла бы правку, значило бы исказить поведение системы.
+ */
 function patchProject(projectId: string, body: Body): Outcome | null {
   return mutate((state): Outcome => {
     const card = state.cards[projectId];
     if (!card) return { status: 404, body: { error: 'Проект не найден' } };
-    Object.assign(card, body);
-    card.updated_at = now();
-    return { status: 200, body: card };
+
+    const sent = body.version;
+    const current = Number(card.version ?? 0);
+    if (sent !== undefined && sent !== null && Number(sent) !== current) {
+      return {
+        status: 409,
+        body: {
+          detail: `Карточка изменена (версия ${current}, у вас ${sent}). `
+            + 'Обновите страницу и внесите правки заново.',
+        },
+      };
+    }
+
+    const clean = { ...body };
+    delete clean.version;
+
+    const changed: Body[] = [];
+    for (const [field, value] of Object.entries(clean)) {
+      const old = card[field];
+      // Сравнение через JSON: поля бывают объектами, а undefined и null на
+      // сервере — это одно и то же отсутствие значения.
+      if (JSON.stringify(old ?? null) === JSON.stringify(value ?? null)) continue;
+      changed.push({ field, old: old ?? null, new: value ?? null });
+      card[field] = value;
+    }
+    if (changed.length) {
+      card.version = current + 1;
+      card.updated_at = now();
+    }
+    return {
+      status: 200,
+      body: { ok: true, changed, version: Number(card.version ?? current), card },
+    };
   });
+}
+
+/** Пароль в демо не создаётся: показывать выдуманный значило бы врать. */
+const DEMO_PASSWORD_NOTE = '(в демо-режиме пароль не создаётся)';
+
+/**
+ * Предпросмотр импорта.
+ *
+ * Странице нужна форма Preview целиком: заглушка { ok, demo } роняла её на
+ * preview.counts.total. Содержимое — честно пустое, потому что демо не
+ * разбирает XLSX/CSV: нулевые счётчики и пустой протокол вместо выдуманных
+ * строк (п.7.2 п.5 — протокол показывает результат настоящей проверки).
+ * created остаётся false: подтверждение в демо ничего не загружает.
+ */
+function importPreview(body: Body): Outcome {
+  const file = body.file as { name?: string } | undefined;
+  const name = file?.name ?? 'выбранный файл';
+  const confirming = body.confirm === 'true';
+  return {
+    status: 200,
+    body: {
+      batch_id: typeof body.batch_id === 'string' && body.batch_id
+        ? body.batch_id
+        : makeId('demo-batch'),
+      file_name: file?.name ?? '',
+      created: false,
+      counts: { total: 0, ok: 0, warning: 0, error: 0, duplicate: 0 },
+      message: confirming
+        ? `Демо-режим без сервера: подтверждение принято, но файл «${name}» `
+          + 'не разобран — строки не загружены, рабочие данные не изменялись.'
+        : `Демо-режим без сервера: файл «${name}» не разобран — строки не `
+          + 'проверены, рабочие данные не изменялись.',
+      protocol: [],
+    },
+  };
+}
+
+/** Поля формы: строки как есть, файл — именем и размером (серверу они и нужны). */
+function bodyFromForm(form: FormData): Body {
+  const body: Body = {};
+  for (const [key, value] of form.entries()) {
+    body[key] = typeof value === 'string' ? value : { name: value.name, size: value.size };
+  }
+  return body;
 }
 
 /**
@@ -301,11 +387,36 @@ export function installDemoMode(): void {
     if (method === 'GET') return handleRead(path);
 
     let body: Body = {};
-    try {
-      const text = init?.body;
-      body = text ? (JSON.parse(String(text)) as Body) : {};
-    } catch {
-      body = {};
+    const form = init?.body instanceof FormData ? init.body : null;
+    if (form) {
+      body = bodyFromForm(form);
+    } else {
+      try {
+        const text = init?.body;
+        body = text ? (JSON.parse(String(text)) as Body) : {};
+      } catch {
+        body = {};
+      }
+    }
+
+    // Импорт: форма ответа нужна странице целиком, содержимое — честно пустое.
+    if (path === '/api/import/preview' && method === 'POST') return respond(importPreview(body));
+
+    // Администрирование: без initial_password страница печатала бы «undefined».
+    if (path === '/api/admin/users' && method === 'POST') {
+      return jsonResponse({
+        ok: true,
+        demo: true,
+        login: body.login ?? '',
+        full_name: body.full_name ?? '',
+        email: body.email ?? null,
+        roles: [],
+        is_active: true,
+        initial_password: DEMO_PASSWORD_NOTE,
+      });
+    }
+    if (/^\/api\/admin\/users\/[^/]+\/reset-password$/.test(path) && method === 'POST') {
+      return jsonResponse({ ok: true, demo: true, initial_password: DEMO_PASSWORD_NOTE });
     }
 
     if (path === '/api/projects' && method === 'POST') return respond(createProject(body));
