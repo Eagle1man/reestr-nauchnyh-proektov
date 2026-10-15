@@ -1,0 +1,48 @@
+/* Полоса демо-режима: левый нижний угол, чтобы не перекрывать кнопку
+   отчёта об ошибке (report-fab стоит справа). */
+.demo-bar {
+  position: fixed;
+  left: 16px;
+  bottom: 52px;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(520px, calc(100vw - 120px));
+  padding: 8px 12px;
+  background: #243447;
+  color: #e9eef5;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.demo-bar__text { flex: 1 1 auto; }
+
+.demo-bar__reset {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border: 1px solid #56708f;
+  border-radius: 6px;
+  background: #2f4459;
+  color: #e9eef5;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.demo-bar__reset:hover { background: #385270; }
+
+.demo-bar__reset:focus-visible { outline: 3px solid #ffd166; outline-offset: 2px; }
+
+.demo-bar__reset--armed {
+  background: #b3402f;
+  border-color: #d9694f;
+}
+
+.demo-bar__reset--armed:hover { background: #c74b38; }
+
+@media print {
+  .demo-bar { display: none !important; }
+}

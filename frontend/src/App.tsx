@@ -1,6 +1,7 @@
 import { NavLink, Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { useAuth } from './auth';
 import ErrorReportButton from './components/ErrorReportButton';
+import DemoBar from './demo/DemoBar';
 import { ErrorAlert } from './components/ui';
 import AdminPage from './pages/Admin';
 import DashboardPage from './pages/Dashboard';
@@ -113,6 +114,9 @@ export default function App() {
       {/* Кнопка отчёта доступна на любой странице, включая экран входа:
           именно там человек чаще всего видит непонятную ошибку. */}
       <ErrorReportButton />
+      {/* Полоса только в сборке с VITE_DEMO=1: условие проверяется на этапе
+          сборки, поэтому в обычную версию этот интерфейс не попадает. */}
+      {import.meta.env.VITE_DEMO === '1' && <DemoBar />}
     </>
   );
 }

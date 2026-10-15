@@ -25,9 +25,16 @@ installErrorCollector();
 const container = document.getElementById('root');
 if (!container) throw new Error('Не найден элемент #root в index.html');
 
+// База сборки нужна и роутеру. На GitHub Pages сайт лежит в подкаталоге
+// (/reestr-demo/), и без basename ссылка вида /projects уводила бы за его
+// пределы: внутри вкладки всё работало, но перезагрузка отдавала бы 404 —
+// проверить сохранность правок было бы невозможно.
+const buildBase = import.meta.env.BASE_URL;
+const basename = buildBase.startsWith('/') ? buildBase : undefined;
+
 createRoot(container).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <AuthProvider>
         <App />
       </AuthProvider>
