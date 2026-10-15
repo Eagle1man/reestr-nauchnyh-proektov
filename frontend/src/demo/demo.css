@@ -7,8 +7,9 @@
   z-index: 900;
   display: flex;
   align-items: center;
-  gap: 10px;
-  max-width: min(520px, calc(100vw - 120px));
+  gap: 8px;
+  flex-wrap: wrap;
+  max-width: min(920px, calc(100vw - 120px));
   padding: 8px 12px;
   background: #243447;
   color: #e9eef5;
@@ -18,8 +19,12 @@
   line-height: 1.35;
 }
 
-.demo-bar__text { flex: 1 1 auto; }
+.demo-bar__text { flex: 1 1 260px; }
 
+/* Результат последнего действия: файл выгружен, файл не принят и т. п. */
+.demo-bar__status { color: #ffd166; }
+
+.demo-bar__action,
 .demo-bar__reset {
   flex: 0 0 auto;
   padding: 5px 10px;
@@ -32,9 +37,14 @@
   white-space: nowrap;
 }
 
+.demo-bar__action:hover,
 .demo-bar__reset:hover { background: #385270; }
 
+.demo-bar__action:focus-visible,
 .demo-bar__reset:focus-visible { outline: 3px solid #ffd166; outline-offset: 2px; }
+
+/* Поле выбора файла открывает системный диалог по нажатию кнопки. */
+.demo-bar__file { display: none; }
 
 .demo-bar__reset--armed {
   background: #b3402f;

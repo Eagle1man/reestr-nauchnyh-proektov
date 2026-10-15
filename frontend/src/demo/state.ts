@@ -181,21 +181,53 @@ export function seedState(fixtures: Fixtures): DemoState {
   return { version: STATE_VERSION, cards, collections, statusOrder };
 }
 
+/**
+ * Разбор сохранённого состояния — и из localStorage, и из выгрузки файла.
+ *
+ * Одна проверка на два входа нужна затем, чтобы файл от тестировщика не
+ * принимался по более слабым правилам, чем собственные данные браузера:
+ * форма у них теперь одна, и повреждённый или чужой JSON отклоняется.
+ */
+export function parseStoredState(raw: string | null | undefined): DemoState | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<DemoState> | null;
+    if (!parsed || typeof parsed !== 'object') return null;
+    const ok = parsed.version === STATE_VERSION
+      && parsed.cards !== null && typeof parsed.cards === 'object'
+      && !Array.isArray(parsed.cards)
+      && parsed.collections !== null && typeof parsed.collections === 'object'
+      && !Array.isArray(parsed.collections);
+    return ok ? (parsed as DemoState) : null;
+  } catch {
+    return null;   // не JSON — не состояние
+  }
+}
+
 export function loadState(fixtures: Fixtures): DemoState {
   if (state) return state;
   let loaded: DemoState | null = null;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as DemoState;
-      if (parsed.version === STATE_VERSION
-          && parsed.cards && parsed.collections) loaded = parsed;
-    }
+    loaded = parseStoredState(window.localStorage.getItem(STORAGE_KEY));
   } catch {
-    loaded = null;   // повреждённые данные — начинаем с чистого снимка
+    loaded = null;   // хранилище недоступно — начинаем с чистого снимка
   }
   state = loaded ?? seedState(fixtures);
   return state;
+}
+
+/** Состояние текстом — для выгрузки в файл. */
+export function exportState(fixtures: Fixtures): string {
+  return JSON.stringify(loadState(fixtures), null, 2);
+}
+
+/** Принять выгрузку от тестировщика. false — файл не похож на состояние. */
+export function importState(raw: string): boolean {
+  const parsed = parseStoredState(raw);
+  if (!parsed) return false;
+  state = parsed;
+  persist();
+  return true;
 }
 
 function persist(): void {

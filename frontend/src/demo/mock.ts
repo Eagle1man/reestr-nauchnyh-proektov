@@ -24,8 +24,8 @@
  */
 import fixtures from './fixtures.json';
 import {
-  bodyOf, COLLECTION_GROUPS, itemsOf, loadState, makeId, mutate, nextStatusCode,
-  resetState, shapeList, structuralDefaults, syncCounts,
+  bodyOf, COLLECTION_GROUPS, exportState, importState, itemsOf, loadState, makeId,
+  mutate, nextStatusCode, resetState, shapeList, structuralDefaults, syncCounts,
   type CollectionSet, type DemoState, type Fixtures,
 } from './state';
 
@@ -374,4 +374,32 @@ export function installDemoMode(): void {
 /** Откат к исходному снимку — кнопка в интерфейсе демо. */
 export function resetDemoData(): void {
   resetState(snapshot);
+}
+
+/**
+ * Выгрузка состояния в файл.
+ *
+ * Зачем: правки живут в браузере тестировщика, и без выгрузки заказчик не
+ * узнал бы, что у того получилось. Файл и есть способ прислать результат —
+ * данные не уходят никуда автоматически, только по команде человека (SEC-05).
+ */
+export function exportDemoData(): string {
+  const json = exportState(snapshot);
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `reestr-demo-${stamp}.json`;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  // Отложенная отмена: сразу после click часть браузеров обрывает скачивание.
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  return `reestr-demo-${stamp}.json`;
+}
+
+/** Загрузка присланной выгрузки. false — файл не похож на состояние демо. */
+export function importDemoData(json: string): boolean {
+  return importState(json);
 }
