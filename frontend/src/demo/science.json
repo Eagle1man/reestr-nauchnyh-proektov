@@ -1,0 +1,645 @@
+{
+  "_note": "Демонстрационные данные раздела «Научная деятельность». Записи синтетические: это НЕ выгрузка eLIBRARY/РИНЦ, поэтому критерий приёмки AC-01 (импорт минимум 30 реальных записей) демо не закрывает. Форма записей повторяет модель данных из ТЗ мониторинга (D-01…D-07, F-01…F-08, T-01…T-09).",
+  "topic": {
+    "id": "TP-1",
+    "title": "Цифровое сознание и человекоцентричное проектирование адаптивного искусственного интеллекта и информационных систем в общественной сфере и управлении",
+    "version": 1,
+    "status": "утверждён",
+    "approved_at": "2026-10-20",
+    "directions": [
+      { "code": "DIR-1", "title": "Человек и цифровое сознание" },
+      { "code": "DIR-2", "title": "Человекоцентричный ИИ и информационные системы" },
+      { "code": "DIR-3", "title": "Интеллектуальное управление организациями" },
+      { "code": "DIR-4", "title": "ИИ в общественной сфере" }
+    ],
+    "categories": [
+      { "code": "DIRECT", "title": "Прямое соответствие", "rule": "Исследуемый аспект главной темы или утверждённой программы составляет предмет либо существенный научный результат публикации." },
+      { "code": "RELATED", "title": "Смежная тематика", "rule": "Есть подтверждаемая содержательная связь, но основной предмет исследования другой." },
+      { "code": "NOT_CONFIRMED", "title": "Связь не подтверждена", "rule": "Представленные тексты не дают достаточного основания установить существенную связь." },
+      { "code": "INSUFFICIENT", "title": "Недостаточно данных", "rule": "Аннотация отсутствует либо текст не позволяет установить предмет и основание оценки." }
+    ]
+  },
+  "venues": [
+    {
+      "id": "V-01",
+      "title": "Вестник Южного университета (ИУБиП)",
+      "publisher": "Южный университет (ИУБиП)",
+      "type": "journal",
+      "issn": "2309-1001",
+      "eissn": "2309-1001",
+      "subjects": ["09.06.01", "5.2.6"],
+      "statuses": [
+        { "list": "РИНЦ", "level": null, "year": 2026, "source": "демо-данные", "received_at": "2026-10-20", "availability": "confirmed" },
+        { "list": "ВАК", "level": 2, "year": 2026, "source": "демо-данные", "received_at": "2026-10-20", "availability": "confirmed" }
+      ],
+      "status_history": [
+        { "list": "ВАК", "level": 3, "year": 2024, "source": "демо-данные", "received_at": "2024-12-01" }
+      ]
+    },
+    {
+      "id": "V-02",
+      "title": "Управленческие науки",
+      "publisher": "Издательство СГУ",
+      "type": "journal",
+      "issn": "0130-3075",
+      "eissn": "2686-1234",
+      "subjects": ["5.2.6", "08.00.05"],
+      "statuses": [
+        { "list": "РИНЦ", "level": null, "year": 2026, "source": "демо-данные", "received_at": "2026-10-19", "availability": "confirmed" },
+        { "list": "«Белый список» РЦНИ", "level": 1, "year": 2025, "source": "https://journalrank.rcsi.science/api/record-sources/0130-3075/level", "received_at": "2026-10-19", "availability": "confirmed" }
+      ]
+    },
+    {
+      "id": "V-03",
+      "title": "Информационные технологии и вычислительные системы",
+      "publisher": "Издательство ЮФУ",
+      "type": "journal",
+      "issn": "2409-1392",
+      "eissn": "2409-1392",
+      "subjects": ["09.06.01"],
+      "statuses": [
+        { "list": "РИНЦ", "level": null, "year": 2026, "source": "демо-данные", "received_at": "2026-10-18", "availability": "confirmed" }
+      ]
+    },
+    {
+      "id": "V-04",
+      "title": "Правовые проблемы цифровой экономики",
+      "publisher": "Издательство СГУ",
+      "type": "journal",
+      "issn": "2658-1332",
+      "eissn": "2658-1332",
+      "subjects": ["5.1.2", "5.1.4"],
+      "statuses": [
+        { "list": "«Белый список» РЦНИ", "level": null, "year": 2026, "source": "https://journalrank.rcsi.science/api/record-sources/2658-1332/level", "received_at": "2026-10-18", "availability": "not_found" }
+      ]
+    },
+    {
+      "id": "V-05",
+      "title": "Экономика региона",
+      "publisher": "Институт экономики УрО РАН",
+      "type": "journal",
+      "issn": "2075-1034",
+      "eissn": "2075-1034",
+      "subjects": ["5.2.6"],
+      "statuses": [
+        { "list": "RSCI", "level": 1, "year": 2026, "source": "демо-данные", "received_at": "2026-10-17", "availability": "confirmed" },
+        { "list": "РИНЦ", "level": null, "year": 2026, "source": "демо-данные", "received_at": "2026-10-17", "availability": "confirmed" }
+      ]
+    },
+    {
+      "id": "V-06",
+      "title": "Психология и педагогика научно-образовательной деятельности",
+      "publisher": "Южный университет (ИУБиП)",
+      "type": "journal",
+      "issn": "2220-1234",
+      "eissn": "2220-1234",
+      "subjects": ["5.3.1"],
+      "statuses": [
+        { "list": "РИНЦ", "level": null, "year": 2026, "source": "демо-данные", "received_at": "2026-10-17", "availability": "confirmed" },
+        { "list": "ВАК", "level": 3, "year": 2026, "source": "демо-данные", "received_at": "2026-10-17", "availability": "confirmed" }
+      ]
+    },
+    {
+      "id": "V-07",
+      "title": "Труды Северо-Кавказской академии общественных наук",
+      "publisher": "СКАСН",
+      "type": "journal",
+      "issn": "1815-9839",
+      "eissn": "1815-9839",
+      "subjects": ["5.1.4", "5.2.6"],
+      "statuses": [
+        { "list": "«Белый список» РЦНИ", "level": 3, "year": 2025, "source": "https://journalrank.rcsi.science/api/record-sources/1815-9839/level", "received_at": "2026-10-16", "availability": "confirmed" }
+      ]
+    },
+    {
+      "id": "V-08",
+      "title": "Сборник материалов международной конференции по цифровой экономике",
+      "publisher": "Южный университет (ИУБиП)",
+      "type": "conference",
+      "issn": null,
+      "eissn": null,
+      "subjects": [],
+      "statuses": []
+    }
+  ],
+  "participants": [
+    {
+      "person_id": "7622b405-fd4c-430e-a533-8fa43370ab8e",
+      "category": "staff",
+      "periods": [{ "from": "2019-09-01", "to": null, "category": "staff", "unit": "кафедра «Управление организационными системами»" }],
+      "external_ids": [
+        { "system": "AuthorID (eLIBRARY)", "value": "1234567", "status": "confirmed" },
+        { "system": "ORCID", "value": "0000-0002-1825-0097", "status": "confirmed" }
+      ]
+    },
+    {
+      "person_id": "6f37b953-e2ee-4edf-8f70-b4c4f8db8dbe",
+      "category": "staff",
+      "periods": [{ "from": "2021-02-01", "to": null, "category": "staff", "unit": "кафедра «Психология и управление персоналом»" }],
+      "external_ids": [
+        { "system": "AuthorID (eLIBRARY)", "value": "1234999", "status": "confirmed" }
+      ]
+    },
+    {
+      "person_id": "f95c74c6-afe7-4b68-b835-44a5010c7047",
+      "category": "staff",
+      "periods": [{ "from": "2018-09-01", "to": null, "category": "staff", "unit": "кафедра «Информационные технологии и прикладная математика»" }],
+      "external_ids": [
+        { "system": "SPIN", "value": "0000-1111-2222-3333", "status": "confirmed" },
+        { "system": "AuthorID (eLIBRARY)", "value": "1234111", "status": "conflict" }
+      ]
+    },
+    {
+      "person_id": "317ef114-c886-48dd-af5e-2e82e1959e3e",
+      "category": "staff",
+      "periods": [{ "from": "2020-09-01", "to": null, "category": "staff", "unit": "кафедра «Экономика и инновационные рыночные исследования»" }],
+      "external_ids": [
+        { "system": "ORCID", "value": "0000-0001-5109-3700", "status": "confirmed" }
+      ]
+    },
+    {
+      "person_id": "7d55ea48-0825-42b8-9137-eb088cba01e5",
+      "category": "staff",
+      "periods": [{ "from": "2017-09-01", "to": null, "category": "staff", "unit": "кафедра «Гражданско-правовые дисциплины»" }],
+      "external_ids": [
+        { "system": "AuthorID (eLIBRARY)", "value": "1234777", "status": "unverified" }
+      ]
+    },
+    {
+      "person_id": "28e833fd-9e4a-4b4a-bcf5-280e0c588d65",
+      "category": "staff",
+      "periods": [{ "from": "2022-03-01", "to": null, "category": "staff", "unit": "Научно-исследовательская лаборатория «Цифровая трансформация социально-экономических систем»" }],
+      "external_ids": [
+        { "system": "SPIN", "value": "0000-4444-5555-6666", "status": "confirmed" },
+        { "system": "ORCID", "value": "0000-0002-7151-0433", "status": "confirmed" }
+      ]
+    },
+    {
+      "person_id": "7e334177-fce1-42c9-bf24-b5b289f83394",
+      "category": "aspirant",
+      "periods": [
+        { "from": "2023-09-01", "to": null, "category": "aspirant", "unit": "кафедра «Информационные технологии и прикладная математика»" },
+        { "from": "2024-02-01", "to": null, "category": "staff", "unit": "кафедра «Информационные технологии и прикладная математика»" }
+      ],
+      "external_ids": [
+        { "system": "AuthorID (eLIBRARY)", "value": "1234000", "status": "confirmed" }
+      ]
+    },
+    {
+      "person_id": "d73ba2ad-50e7-41e8-bcbe-0ef5ba643c54",
+      "category": "staff",
+      "periods": [{ "from": "2016-01-01", "to": null, "category": "staff", "unit": "Совет по науке" }],
+      "external_ids": []
+    }
+  ],
+  "publications": [
+    {
+      "id": "SP-2026-0001",
+      "type": "article",
+      "title_ru": "Объяснимость рекомендаций искусственного интеллекта и доверие пользователей к цифровым сервисам образования",
+      "title_en": "Explainability of AI recommendations and user trust in digital education services",
+      "year": 2026,
+      "date_precision": "month",
+      "published_at": null,
+      "doi": "10.9999/demo.2026.0001",
+      "edn": "DEMO-EDN-0001",
+      "venue_id": "V-02",
+      "stage": "published",
+      "stage_dates": { "submitted": "2026-03-12", "accepted": "2026-05-20", "published": "2026-07-01" },
+      "university_owned": true,
+      "ownership_basis": "аффилиация в записи источника",
+      "source_system": "демо-данные (не eLIBRARY/РИНЦ)",
+      "source_record_id": "DEMO-0001",
+      "imported_at": "2026-10-20T09:12:00+03:00",
+      "abstract_ru": "Исследуется влияние объяснимости рекомендаций искусственного интеллекта на доверие и самостоятельность пользователей цифровых образовательных сервисов. Показано, что объяснение не только повышает принятие рекомендации, но и снижает бездумное делегирование решения алгоритму.",
+      "keywords_ru": ["объяснимость", "доверие", "цифровое сознание", "образование"],
+      "authors": [
+        { "person_id": "6f37b953-e2ee-4edf-8f70-b4c4f8db8dbe", "order": 1, "affiliation": "кафедра «Психология и управление персоналом»", "confirmation": "source", "confirmed_at": "2026-10-20" },
+        { "person_id": "f95c74c6-afe7-4b68-b835-44a5010c7047", "order": 2, "affiliation": "кафедра «Информационные технологии и прикладная математика»", "confirmation": "source", "confirmed_at": "2026-10-20" }
+      ],
+      "topic": {
+        "category": "DIRECT",
+        "directions": ["DIR-1", "DIR-2"],
+        "explanation": "Предмет исследования — объяснимость и границы делегирования решений алгоритму: это прямой аспект направлений «Человек и цифровое сознание» и «Человекоцентричный ИИ».",
+        "fragments": [
+          { "lang": "ru", "quote": "снижает бездумное делегирование решения алгоритму" }
+        ],
+        "criteria_version": 1,
+        "model_version": "demo-1",
+        "state": "confirmed",
+        "analyzed_at": "2026-10-20T09:15:00+03:00",
+        "expert_at": "2026-10-20T11:40:00+03:00"
+      }
+    },
+    {
+      "id": "SP-2026-0002",
+      "type": "article",
+      "title_ru": "Интеллектуальные системы поддержки принятия решений в управлении образовательной организацией",
+      "title_en": null,
+      "year": 2026,
+      "date_precision": "year",
+      "published_at": null,
+      "doi": "10.9999/demo.2026.0002",
+      "edn": null,
+      "venue_id": "V-01",
+      "stage": "published",
+      "stage_dates": { "submitted": "2026-01-20", "accepted": "2026-03-05", "published": "2026-06-15" },
+      "university_owned": true,
+      "ownership_basis": "аффилиация в записи источника",
+      "source_system": "демо-данные (не eLIBRARY/РИНЦ)",
+      "source_record_id": "DEMO-0002",
+      "imported_at": "2026-10-20T09:12:00+03:00",
+      "abstract_ru": "Рассматривается проектирование интеллектуальной системы поддержки решений руководителя образовательной организации: архитектура, сценарии применения и ограничения при передаче части полномочий алгоритму.",
+      "keywords_ru": ["управление", "интеллектуальные системы", "образовательная организация"],
+      "authors": [
+        { "person_id": "7622b405-fd4c-430e-a533-8fa43370ab8e", "order": 1, "affiliation": "кафедра «Управление организационными системами»", "confirmation": "source", "confirmed_at": "2026-10-20" }
+      ],
+      "topic": {
+        "category": "DIRECT",
+        "directions": ["DIR-3"],
+        "explanation": "Работа посвящена проектированию ИИ-систем для управления организацией — прямое соответствие направлению «Интеллектуальное управление организациями».",
+        "fragments": [
+          { "lang": "ru", "quote": "проектирование интеллектуальной системы поддержки решений руководителя образовательной организации" }
+        ],
+        "criteria_version": 1,
+        "model_version": "demo-1",
+        "state": "confirmed",
+        "analyzed_at": "2026-10-20T09:16:00+03:00",
+        "expert_at": "2026-10-20T11:45:00+03:00"
+      }
+    },
+    {
+      "id": "SP-2026-0003",
+      "type": "article",
+      "title_ru": "Правовые аспекты автоматической обработки персональных данных в вузах: риски и ответственность",
+      "title_en": null,
+      "year": 2025,
+      "date_precision": "year",
+      "published_at": null,
+      "doi": null,
+      "edn": "DEMO-EDN-0003",
+      "venue_id": "V-04",
+      "stage": "published",
+      "stage_dates": { "submitted": "2025-09-10", "accepted": "2025-11-02", "published": "2025-12-20" },
+      "university_owned": true,
+      "ownership_basis": "аффилиация в записи источника",
+      "source_system": "демо-данные (не eLIBRARY/РИНЦ)",
+      "source_record_id": "DEMO-0003",
+      "imported_at": "2026-10-20T09:12:00+03:00",
+      "abstract_ru": "Анализируются правовые риски автоматической обработки персональных данных в образовательных организациях: основания обработки, распределение ответственности между вузом и разработчиком информационных систем.",
+      "keywords_ru": ["персональные данные", "ответственность", "информационные системы"],
+      "authors": [
+        { "person_id": "7d55ea48-0825-42b8-9137-eb088cba01e5", "order": 1, "affiliation": "кафедра «Гражданско-правовые дисциплины»", "confirmation": "participant", "confirmed_at": "2026-10-21" },
+        { "person_id": "7e334177-fce1-42c9-bf24-b5b289f83394", "order": 2, "affiliation": "кафедра «Информационные технологии и прикладная математика»", "confirmation": "source", "confirmed_at": "2026-10-20" }
+      ],
+      "topic": {
+        "category": "RELATED",
+        "directions": ["DIR-4"],
+        "explanation": "Информационные системы рассматриваются как предмет правового анализа, а ИИ — лишь как частный случай технологии: связь содержательная, но основной предмет исследования иной.",
+        "fragments": [
+          { "lang": "ru", "quote": "распределение ответственности между вузом и разработчиком информационных систем" }
+        ],
+        "criteria_version": 1,
+        "model_version": "demo-1",
+        "state": "expert_changed",
+        "analyzed_at": "2026-10-20T09:16:00+03:00",
+        "expert_at": "2026-10-21T10:05:00+03:00",
+        "expert_note": "Машинная оценка предложила прямое соответствие; эксперт понизил до смежной тематики."
+      }
+    },
+    {
+      "id": "SP-2026-0004",
+      "type": "article",
+      "title_ru": "Цифровая экономика региона: методика оценки влияния платформенных сервисов на малый бизнес",
+      "title_en": "Digital economy of the region: assessing the impact of platform services on small business",
+      "year": 2026,
+      "date_precision": "month",
+      "published_at": null,
+      "doi": "10.9999/demo.2026.0004",
+      "edn": null,
+      "venue_id": "V-05",
+      "stage": "published",
+      "stage_dates": { "submitted": "2026-02-14", "accepted": "2026-04-01", "published": "2026-06-30" },
+      "university_owned": true,
+      "ownership_basis": "аффилиация в записи источника",
+      "source_system": "демо-данные (не eLIBRARY/РИНЦ)",
+      "source_record_id": "DEMO-0004",
+      "imported_at": "2026-10-20T09:12:00+03:00",
+      "abstract_ru": "Предложена методика оценки влияния цифровых платформенных сервисов на социально-экономическое развитие региона; апробирована на данных по Ростовской области.",
+      "keywords_ru": ["региональная экономика", "платформенные сервисы", "малый бизнес"],
+      "authors": [
+        { "person_id": "317ef114-c886-48dd-af5e-2e82e1959e3e", "order": 1, "affiliation": "кафедра «Экономика и инновационные рыночные исследования»", "confirmation": "source", "confirmed_at": "2026-10-20" },
+        { "person_id": "28e833fd-9e4a-4b4a-bcf5-280e0c588d65", "order": 2, "affiliation": "Научно-исследовательская лаборатория «Цифровая трансформация социально-экономических систем»", "confirmation": "source", "confirmed_at": "2026-10-20" }
+      ],
+      "topic": {
+        "category": "DIRECT",
+        "directions": ["DIR-3"],
+        "explanation": "Методика оценки влияния цифровых сервисов на региональные процессы — прямое соответствие направлению «Интеллектуальное управление организациями».",
+        "fragments": [
+          { "lang": "ru", "quote": "оценки влияния цифровых платформенных сервисов на социально-экономическое развитие региона" }
+        ],
+        "criteria_version": 1,
+        "model_version": "demo-1",
+        "state": "confirmed",
+        "analyzed_at": "2026-10-20T09:17:00+03:00",
+        "expert_at": "2026-10-20T12:00:00+03:00"
+      }
+    },
+    {
+      "id": "SP-2026-0005",
+      "type": "article",
+      "title_ru": "Оценка качества инклюзивного образования средствами цифрового наблюдения",
+      "title_en": null,
+      "year": 2026,
+      "date_precision": "year",
+      "published_at": null,
+      "doi": null,
+      "edn": "DEMO-EDN-0005",
+      "venue_id": "V-06",
+      "stage": "accepted",
+      "stage_dates": { "submitted": "2026-04-10", "accepted": "2026-08-22", "published": null },
+      "university_owned": true,
+      "ownership_basis": "аффилиация в записи источника",
+      "source_system": "демо-данные (не eLIBRARY/РИНЦ)",
+      "source_record_id": "DEMO-0005",
+      "imported_at": "2026-10-20T09:12:00+03:00",
+      "abstract_ru": "Описывается методика оценки качества инклюзивного образования на основе данных цифрового наблюдения и обратной связи участников.",
+      "keywords_ru": ["инклюзивное образование", "качество образования"],
+      "authors": [
+        { "person_id": "6f37b953-e2ee-4edf-8f70-b4c4f8db8dbe", "order": 1, "affiliation": "кафедра «Психология и управление персоналом»", "confirmation": "source", "confirmed_at": "2026-10-20" }
+      ],
+      "topic": {
+        "category": "RELATED",
+        "directions": ["DIR-1"],
+        "explanation": "Цифровые средства здесь — инструмент измерения, а не предмет исследования; связь с темой содержательная через человекоцентричность оценки.",
+        "fragments": [
+          { "lang": "ru", "quote": "данных цифрового наблюдения и обратной связи участников" }
+        ],
+        "criteria_version": 1,
+        "model_version": "demo-1",
+        "state": "awaiting_expert",
+        "analyzed_at": "2026-10-20T09:17:00+03:00",
+        "expert_at": null
+      }
+    },
+    {
+      "id": "SP-2026-0006",
+      "type": "article",
+      "title_ru": "Мягкие модели управления социально-экономическими кластерами региона",
+      "title_en": null,
+      "year": 2026,
+      "date_precision": "year",
+      "published_at": null,
+      "doi": "10.9999/demo.2026.0006",
+      "edn": null,
+      "venue_id": "V-01",
+      "stage": "published",
+      "stage_dates": { "submitted": "2025-11-03", "accepted": "2026-01-20", "published": "2026-05-08" },
+      "university_owned": true,
+      "ownership_basis": "аффилиация в записи источника",
+      "source_system": "демо-данные (не eLIBRARY/РИНЦ)",
+      "source_record_id": "DEMO-0006",
+      "imported_at": "2026-10-20T09:12:00+03:00",
+      "abstract_ru": null,
+      "keywords_ru": ["нечёткая логика", "региональная экономика"],
+      "authors": [
+        { "person_id": "f95c74c6-afe7-4b68-b835-44a5010c7047", "order": 1, "affiliation": "кафедра «Информационные технологии и прикладная математика»", "confirmation": "source", "confirmed_at": "2026-10-20" }
+      ],
+      "topic": {
+        "category": "INSUFFICIENT",
+        "directions": [],
+        "explanation": "Аннотация отсутствует в записи источника: оценить связь с главной темой по представленным текстам нельзя.",
+        "fragments": [],
+        "criteria_version": 1,
+        "model_version": "demo-1",
+        "state": "confirmed",
+        "analyzed_at": "2026-10-20T09:18:00+03:00",
+        "expert_at": "2026-10-20T12:10:00+03:00",
+        "expert_note": "Подтверждено решение «Недостаточно данных»; аннотацию запросили у автора."
+      }
+    },
+    {
+      "id": "SP-2026-0007",
+      "type": "article",
+      "title_ru": "Алгоритмы рекомендаций в системах поддержки обучения: архитектура и эксплуатация",
+      "title_en": "Recommendation algorithms in learning support systems: architecture and operation",
+      "year": 2026,
+      "date_precision": "month",
+      "published_at": null,
+      "doi": "10.9999/demo.2026.0007",
+      "edn": null,
+      "venue_id": "V-03",
+      "stage": "published",
+      "stage_dates": { "submitted": "2025-12-01", "accepted": "2026-03-12", "published": "2026-06-10" },
+      "university_owned": true,
+      "ownership_basis": "аффилиация в записи источника",
+      "source_system": "демо-данные (не eLIBRARY/РИНЦ)",
+      "source_record_id": "DEMO-0007",
+      "imported_at": "2026-10-20T09:12:00+03:00",
+      "abstract_ru": "Описаны архитектура рекомендательных алгоритмов в системах поддержки обучения, требования к данным и эксплуатационные ограничения; отдельно обсуждается роль преподавателя в контуре рекомендаций.",
+      "keywords_ru": ["рекомендательные системы", "обучение", "архитектура"],
+      "authors": [
+        { "person_id": "f95c74c6-afe7-4b68-b835-44a5010c7047", "order": 1, "affiliation": "кафедра «Информационные технологии и прикладная математика»", "confirmation": "source", "confirmed_at": "2026-10-20" },
+        { "person_id": "7e334177-fce1-42c9-bf24-b5b289f83394", "order": 2, "affiliation": "кафедра «Информационные технологии и прикладная математика»", "confirmation": "participant", "confirmed_at": "2026-10-21" }
+      ],
+      "topic": {
+        "category": "DIRECT",
+        "directions": ["DIR-2"],
+        "explanation": "Роль человека в контуре рекомендаций — прямое соответствие направлению о человекоцентричных информационных системах.",
+        "fragments": [
+          { "lang": "ru", "quote": "обсуждается роль преподавателя в контуре рекомендаций" }
+        ],
+        "criteria_version": 1,
+        "model_version": "demo-1",
+        "state": "confirmed",
+        "analyzed_at": "2026-10-20T09:18:00+03:00",
+        "expert_at": "2026-10-21T09:30:00+03:00"
+      }
+    },
+    {
+      "id": "SP-2026-0008",
+      "type": "chapter",
+      "title_ru": "Человекоцентричный подход к проектированию цифровых сервисов: практики и ограничения",
+      "title_en": null,
+      "year": 2026,
+      "date_precision": "year",
+      "published_at": null,
+      "doi": null,
+      "edn": null,
+      "venue_id": "V-07",
+      "stage": "published",
+      "stage_dates": { "submitted": "2025-10-12", "accepted": "2026-01-15", "published": "2026-04-18" },
+      "university_owned": true,
+      "ownership_basis": "аффилиация в записи источника",
+      "source_system": "демо-данные (не eLIBRARY/РИНЦ)",
+      "source_record_id": "DEMO-0008",
+      "imported_at": "2026-10-20T09:12:00+03:00",
+      "abstract_ru": "В главе собраны практики проектирования цифровых сервисов с ориентацией на потребности человека и разобраны ограничения такого подхода.",
+      "keywords_ru": ["человекоцентричность", "проектирование сервисов"],
+      "authors": [
+        { "person_id": "7622b405-fd4c-430e-a533-8fa43370ab8e", "order": 1, "affiliation": "кафедра «Управление организационными системами»", "confirmation": "source", "confirmed_at": "2026-10-20" }
+      ],
+      "topic": {
+        "category": "DIRECT",
+        "directions": ["DIR-2", "DIR-1"],
+        "explanation": "Предмет главы — проектирование взаимодействия человека с системой; прямое соответствие двум направлениям.",
+        "fragments": [
+          { "lang": "ru", "quote": "проектирования цифровых сервисов с ориентацией на потребности человека" }
+        ],
+        "criteria_version": 1,
+        "model_version": "demo-1",
+        "state": "confirmed",
+        "analyzed_at": "2026-10-20T09:19:00+03:00",
+        "expert_at": "2026-10-21T09:40:00+03:00"
+      }
+    },
+    {
+      "id": "SP-2026-0009",
+      "type": "article",
+      "title_ru": "Уголовно-правовая оценка киберпреступлений: проблемы квалификации",
+      "title_en": null,
+      "year": 2025,
+      "date_precision": "year",
+      "published_at": null,
+      "doi": null,
+      "edn": "DEMO-EDN-0009",
+      "venue_id": "V-04",
+      "stage": "published",
+      "stage_dates": { "submitted": "2024-11-05", "accepted": "2025-02-14", "published": "2025-06-20" },
+      "university_owned": true,
+      "ownership_basis": "аффилиация в записи источника",
+      "source_system": "демо-данные (не eLIBRARY/РИНЦ)",
+      "source_record_id": "DEMO-0009",
+      "imported_at": "2026-10-20T09:12:00+03:00",
+      "abstract_ru": "Рассматриваются проблемы квалификации киберпреступлений, возникающие при изменении цифровой среды.",
+      "keywords_ru": ["уголовное право", "киберпреступность"],
+      "authors": [
+        { "person_id": "7d55ea48-0825-42b8-9137-eb088cba01e5", "order": 1, "affiliation": "кафедра «Гражданско-правовые дисциплины»", "confirmation": "source", "confirmed_at": "2026-10-20" }
+      ],
+      "topic": {
+        "category": "NOT_CONFIRMED",
+        "directions": [],
+        "explanation": "Цифровая среда выступает контекстом, искусственный интеллект в работе не исследуется; оснований для существенной связи нет.",
+        "fragments": [
+          { "lang": "ru", "quote": "проблемы квалификации киберпреступлений" }
+        ],
+        "criteria_version": 1,
+        "model_version": "demo-1",
+        "state": "confirmed",
+        "analyzed_at": "2026-10-20T09:19:00+03:00",
+        "expert_at": "2026-10-21T10:00:00+03:00"
+      }
+    },
+    {
+      "id": "SP-2026-0010",
+      "type": "article",
+      "title_ru": "Цифровые компетенции преподавателя вуза: программа повышения квалификации",
+      "title_en": null,
+      "year": 2026,
+      "date_precision": "year",
+      "published_at": null,
+      "doi": null,
+      "edn": null,
+      "venue_id": "V-06",
+      "stage": "submitted",
+      "stage_dates": { "submitted": "2026-09-18", "accepted": null, "published": null },
+      "university_owned": true,
+      "ownership_basis": "аффилиация в записи источника",
+      "source_system": "демо-данные (не eLIBRARY/РИНЦ)",
+      "source_record_id": "DEMO-0010",
+      "imported_at": "2026-10-20T09:12:00+03:00",
+      "abstract_ru": "Представлена программа повышения квалификации по цифровым компетенциям для преподавателей, рассчитанная на 72 академических часа.",
+      "keywords_ru": ["цифровые компетенции", "повышение квалификации"],
+      "authors": [
+        { "person_id": "d73ba2ad-50e7-41e8-bcbe-0ef5ba643c54", "order": 1, "affiliation": "Совет по науке", "confirmation": "coordinator", "confirmed_at": "2026-10-21" }
+      ],
+      "topic": {
+        "category": "RELATED",
+        "directions": ["DIR-1"],
+        "explanation": "Программа направлена на человека как носителя цифровой субъектности, но не исследует саму тему.",
+        "fragments": [
+          { "lang": "ru", "quote": "цифровым компетенциям для преподавателей" }
+        ],
+        "criteria_version": 1,
+        "model_version": "demo-1",
+        "state": "pending",
+        "analyzed_at": null,
+        "expert_at": null
+      }
+    },
+    {
+      "id": "SP-2026-0011",
+      "type": "dataset",
+      "title_ru": "Набор данных о цифровом следе обучающегося: состав и ограничения применения",
+      "title_en": "Dataset of the student digital trace: composition and use limitations",
+      "year": 2026,
+      "date_precision": "month",
+      "published_at": null,
+      "doi": "10.9999/demo.2026.0011",
+      "edn": null,
+      "venue_id": "V-03",
+      "stage": "published",
+      "stage_dates": { "submitted": "2026-02-02", "accepted": "2026-04-27", "published": "2026-07-28" },
+      "university_owned": true,
+      "ownership_basis": "аффилиация в записи источника",
+      "source_system": "демо-данные (не eLIBRARY/РИНЦ)",
+      "source_record_id": "DEMO-0011",
+      "imported_at": "2026-10-20T09:12:00+03:00",
+      "abstract_ru": "Описан состав набора данных о цифровом следе обучающегося, условия обезличичивания и правовые ограничения использования.",
+      "keywords_ru": ["набор данных", "цифровой след", "персональные данные"],
+      "authors": [
+        { "person_id": "f95c74c6-afe7-4b68-b835-44a5010c7047", "order": 1, "affiliation": "кафедра «Информационные технологии и прикладная математика»", "confirmation": "source", "confirmed_at": "2026-10-20" }
+      ],
+      "topic": {
+        "category": "RELATED",
+        "directions": ["DIR-1"],
+        "explanation": "Данные о поведении обучающегося — материал о человеке; связь с темой есть, предметом является набор данных, а не цифровое сознание.",
+        "fragments": [
+          { "lang": "ru", "quote": "условия обезличичивания и правовые ограничения использования" }
+        ],
+        "criteria_version": 1,
+        "model_version": "demo-1",
+        "state": "awaiting_expert",
+        "analyzed_at": "2026-10-20T09:20:00+03:00",
+        "expert_at": null
+      }
+    },
+    {
+      "id": "SP-2026-0012",
+      "type": "article",
+      "title_ru": "Экономика вузовского цифрового пространства: модель затрат на сервисы",
+      "title_en": null,
+      "year": 2026,
+      "date_precision": "year",
+      "published_at": null,
+      "doi": null,
+      "edn": null,
+      "venue_id": "V-02",
+      "stage": "accepted",
+      "stage_dates": { "submitted": "2026-05-06", "accepted": "2026-09-02", "published": null },
+      "university_owned": false,
+      "ownership_basis": "соавторство с сотрудником другой организации, подтверждается документом",
+      "source_system": "демо-данные (не eLIBRARY/РИНЦ)",
+      "source_record_id": "DEMO-0012",
+      "imported_at": "2026-10-20T09:12:00+03:00",
+      "abstract_ru": "Предложена модель затрат вуза на цифровые сервисы: стоимость владения, распределение нагрузки и варианты оптимизации.",
+      "keywords_ru": ["затраты", "цифровая инфраструктура"],
+      "authors": [
+        { "person_id": "317ef114-c886-48dd-af5e-2e82e1959e3e", "order": 1, "affiliation": "кафедра «Экономика и инновационные рыночные исследования»", "confirmation": "participant", "confirmed_at": "2026-10-21" }
+      ],
+      "topic": {
+        "category": "NOT_CONFIRMED",
+        "directions": [],
+        "explanation": "Работа экономическая, без исследования интеллектуальных систем и без аспекта человекоцентричности.",
+        "fragments": [
+          { "lang": "ru", "quote": "модель затрат на цифровые сервисы" }
+        ],
+        "criteria_version": 1,
+        "model_version": "demo-1",
+        "state": "confirmed",
+        "analyzed_at": "2026-10-20T09:20:00+03:00",
+        "expert_at": "2026-10-21T10:20:00+03:00"
+      }
+    }
+  ]
+}

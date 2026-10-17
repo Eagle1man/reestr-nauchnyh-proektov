@@ -13,6 +13,11 @@ import ProjectDetailPage from './pages/ProjectDetail';
 import ProjectsPage from './pages/Projects';
 import PublicPage from './pages/Public';
 import RemindersPage from './pages/Reminders';
+import { ScienceParticipantPage, ScienceParticipantsPage } from './pages/science/ScienceParticipants';
+import SciencePublicationPage from './pages/science/SciencePublication';
+import SciencePublicationsPage from './pages/science/SciencePublications';
+import ScienceTopicPage from './pages/science/ScienceTopic';
+import { ScienceVenuePage, ScienceVenuesPage } from './pages/science/ScienceVenues';
 
 /** Закрытая рабочая зона: требуется вход (п.3.1 ТЗ). */
 function Protected() {
@@ -67,6 +72,14 @@ function Shell() {
           <NavLink to="/" end>Панель</NavLink>
           <NavLink to="/projects">Проекты</NavLink>
           <NavLink to="/reminders">Назначения</NavLink>
+          {/* Раздел «Научная деятельность» по отдельному ТЗ мониторинга. В
+              боевой версии он появится вместе с API раздела; пока API отвечает
+              только в демонстрации, пункт меню показывается в той же сборке, что
+              и сама демонстрация, — иначе пользователь попал бы в пустую
+              страницу. */}
+          {import.meta.env.VITE_DEMO === '1' && (
+            <NavLink to="/science">Научная деятельность</NavLink>
+          )}
           <NavLink to="/transfer">Импорт и выгрузка</NavLink>
           <NavLink to="/admin">Администрирование</NavLink>
         </nav>
@@ -99,6 +112,13 @@ export default function App() {
           <Route path="projects/new" element={<NewProjectPage />} />
           <Route path="projects/:id" element={<ProjectDetailPage />} />
           <Route path="reminders" element={<RemindersPage />} />
+          <Route path="science" element={<SciencePublicationsPage />} />
+          <Route path="science/publications/:id" element={<SciencePublicationPage />} />
+          <Route path="science/venues" element={<ScienceVenuesPage />} />
+          <Route path="science/venues/:id" element={<ScienceVenuePage />} />
+          <Route path="science/participants" element={<ScienceParticipantsPage />} />
+          <Route path="science/participants/:id" element={<ScienceParticipantPage />} />
+          <Route path="science/topic" element={<ScienceTopicPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route element={<TransferOnly />}>
             <Route path="transfer" element={<ImportExportPage />} />

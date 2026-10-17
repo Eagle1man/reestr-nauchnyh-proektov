@@ -24,6 +24,10 @@
  */
 import fixtures from './fixtures.json';
 import {
+  science, scienceStats, setPersonNames, STAGE_TITLES, viewPublication,
+  type SciTopicDecision, type Stage,
+} from './science';
+import {
   bodyOf, COLLECTION_GROUPS, exportState, importState, itemsOf, loadState, makeId,
   mutate, nextStatusCode, resetState, shapeList, structuralDefaults, syncCounts,
   type CollectionSet, type DemoState, type Fixtures,
@@ -323,12 +327,15 @@ function readProjectList(): Response {
 }
 
 /** Чтения: из состояния для проектов, из снимка для остального адреса. */
-function handleRead(path: string): Response {
+function handleRead(path: string, search = ''): Response {
   // Порядок важен: «taxonomy» и «duplicates» — тоже /api/projects/...,
   // но не карточки проекта.
   if (path === '/api/projects/taxonomy') return jsonResponse(bodyOf(snapshot, 'taxonomy'));
   if (path === '/api/projects/duplicates') return readProjectList();
   if (path === '/api/projects') return readProjectList();
+
+  const scienceResponse = readScience(path, search);
+  if (scienceResponse) return scienceResponse;
 
   const preview = path.match(/^\/api\/projects\/[^/]+\/public-preview$/);
   if (preview) return jsonResponse(bodyOf(snapshot, 'public_projects'));
@@ -366,6 +373,187 @@ function handleRead(path: string): Response {
   return jsonResponse(emptyFor(path));
 }
 
+/**
+ * Пометка раздела для демонстрации.
+ *
+ * Показывается в интерфейсе демо намеренно: ТЗ мониторинга прямо запрещает
+ * подменять реальные данные eLIBRARY/РИНЦ демонстрационными, поэтому замалчивать
+ * происхождение записей было бы искажением.
+ */
+const SCIENCE_NOTICE = 'Демонстрационные данные: это не выгрузка eLIBRARY/РИНЦ. '
+  + 'Критерий приёмки AC-01 (импорт минимум 30 реальных записей) демо не закрывает.';
+
+/** Решения раздела из состояния: эксперт меняет их, поэтому они не в снимке. */
+function scienceDecisionsOf(): Record<string, SciTopicDecision> {
+  return loadState(snapshot).scienceDecisions as unknown as Record<string, SciTopicDecision>;
+}
+
+/** Участники раздела: снимок участников дополнен именами из общего списка лиц. */
+function scienceParticipants() {
+  const decisions = scienceDecisionsOf();
+  const persons = itemsOf(snapshot, 'persons');
+  return science.participants.map((participant) => {
+    const person = persons.find((item) => String(item.id) === participant.person_id);
+    const works = science.publications.filter((publication) => publication.authors
+      .some((author) => author.person_id === participant.person_id));
+    const current = participant.periods.find((period) => period.to === null) ?? participant.periods[0];
+    return {
+      person_id: participant.person_id,
+      name: String(person?.full_name ?? participant.person_id),
+      position: person?.position ?? null,
+      category: participant.category,
+      unit: current?.unit ?? null,
+      periods: participant.periods,
+      external_ids: participant.external_ids,
+      works_total: works.length,
+      works_published: works.filter((work) => work.stage === 'published').length,
+      confirmed_topics: works.filter((work) => {
+        const decision = decisions[work.id] ?? work.topic;
+        return decision.state === 'confirmed' || decision.state === 'expert_changed';
+      }).length,
+    };
+  });
+}
+
+/** Чтения раздела «Научная деятельность». null — адрес не раздела. */
+function readScience(path: string, search: string): Response | null {
+  if (!path.startsWith('/api/science/')) return null;
+  const params = new URLSearchParams(search);
+  const decisions = scienceDecisionsOf();
+  const views = science.publications.map((item) => viewPublication(item, decisions));
+  const stats = scienceStats(science.publications, decisions);
+
+  if (path === '/api/science/topic') {
+    return jsonResponse({ passport: science.topic, stats, demo_notice: SCIENCE_NOTICE });
+  }
+
+  if (path === '/api/science/publications') {
+    const stage = params.get('stage') ?? '';
+    const category = params.get('category') ?? '';
+    const year = params.get('year') ?? '';
+    const query = (params.get('q') ?? '').trim().toLowerCase();
+    const items = views.filter((view) => (
+      (!stage || view.stage === stage)
+      && (!category || view.topic.category === category)
+      && (!year || String(view.year) === year)
+      && (!query || `${view.title_ru} ${view.venue_title ?? ''} ${
+        view.authors.map((author) => author.name).join(' ')}`
+        .toLowerCase().includes(query))
+    ));
+    return jsonResponse({
+      items,
+      total: items.length,
+      stats,
+      filters: {
+        stages: (Object.keys(STAGE_TITLES) as Stage[]).map((code) => ({
+          code, title: STAGE_TITLES[code],
+        })),
+        categories: science.topic.categories,
+        years: [...new Set(views.map((view) => view.year))].sort((a, b) => b - a),
+      },
+      demo_notice: SCIENCE_NOTICE,
+    });
+  }
+
+  const publication = path.match(/^\/api\/science\/publications\/([^/]+)$/);
+  if (publication) {
+    const view = views.find((item) => item.id === publication[1]);
+    if (!view) return jsonResponse({ detail: 'Публикация не найдена' }, 404);
+    const venue = science.venues.find((item) => item.id === view.venue_id) ?? null;
+    return jsonResponse({ publication: view, venue, demo_notice: SCIENCE_NOTICE });
+  }
+
+  if (path === '/api/science/venues') {
+    const items = science.venues.map((venue) => {
+      const works = views.filter((view) => view.venue_id === venue.id);
+      return {
+        ...venue,
+        works_total: works.length,
+        works_published: works.filter((work) => work.stage === 'published').length,
+      };
+    });
+    return jsonResponse({ items, total: items.length, demo_notice: SCIENCE_NOTICE });
+  }
+
+  const venue = path.match(/^\/api\/science\/venues\/([^/]+)$/);
+  if (venue) {
+    const item = science.venues.find((entry) => entry.id === venue[1]);
+    if (!item) return jsonResponse({ detail: 'Издание не найдено' }, 404);
+    return jsonResponse({
+      venue: item,
+      publications: views.filter((view) => view.venue_id === item.id),
+      demo_notice: SCIENCE_NOTICE,
+    });
+  }
+
+  if (path === '/api/science/participants') {
+    const items = scienceParticipants();
+    return jsonResponse({ items, total: items.length, stats, demo_notice: SCIENCE_NOTICE });
+  }
+
+  const participant = path.match(/^\/api\/science\/participants\/([^/]+)$/);
+  if (participant) {
+    const item = scienceParticipants().find((entry) => entry.person_id === participant[1]);
+    if (!item) return jsonResponse({ detail: 'Участник не найден' }, 404);
+    const works = views.filter((view) => view.authors
+      .some((author) => author.person_id === item.person_id));
+    return jsonResponse({
+      participant: item, publications: works, demo_notice: SCIENCE_NOTICE,
+    });
+  }
+
+  return jsonResponse({ items: [] });
+}
+
+/**
+ * Экспертное решение по тематической оценке (T-07).
+ *
+ * Основание обязательно: решение без объяснения не принимается. Категория и
+ * направления проверяются по паспорту темы — модель и интерфейс не должны
+ * предлагать значения, которых нет в утверждённых критериях (T-06).
+ */
+function setTopicDecision(publicationId: string, body: Body): Outcome {
+  const category = String(body.category ?? '');
+  const explanation = String(body.explanation ?? '').trim();
+  const chosen = Array.isArray(body.directions)
+    ? (body.directions as unknown[]).map(String)
+    : [];
+  const allowedCategories = science.topic.categories.map((item) => item.code);
+  const allowedDirections = science.topic.directions.map((item) => item.code);
+
+  if (!allowedCategories.includes(category)) {
+    return { status: 422, body: { detail: 'Категория тематической оценки недопустима' } };
+  }
+  if (!explanation) {
+    return { status: 422, body: { detail: 'Основание решения обязательно (п.6.2 ТЗ)' } };
+  }
+  const unknown = chosen.filter((code) => !allowedDirections.includes(code));
+  if (unknown.length) {
+    return { status: 422, body: { detail: `Неизвестные направления: ${unknown.join(', ')}` } };
+  }
+
+  const outcome = mutate((state): Outcome => {
+    const current = state.scienceDecisions[publicationId] as SciTopicDecision | undefined;
+    if (!current) return { status: 404, body: { detail: 'Публикация не найдена' } };
+    const changed = current.category !== category
+      || JSON.stringify(current.directions) !== JSON.stringify(chosen);
+    const updated: SciTopicDecision = {
+      ...current,
+      category,
+      directions: chosen,
+      explanation,
+      state: changed ? 'expert_changed' : 'confirmed',
+      expert_at: now(),
+      expert_note: changed
+        ? 'Эксперт изменил машинную оценку; исходный ответ модели сохранён рядом.'
+        : current.expert_note,
+    };
+    state.scienceDecisions[publicationId] = updated as unknown as Body;
+    return { status: 200, body: { publication_id: publicationId, topic: updated } };
+  });
+  return outcome ?? { status: 500, body: { detail: 'Состояние демо не инициализировано' } };
+}
+
 export function installDemoMode(): void {
   if (!isDemoMode()) return;
 
@@ -385,7 +573,7 @@ export function installDemoMode(): void {
     if (path === '/api/auth/logout') return jsonResponse({ ok: true });
     if (path === '/api/auth/password') return jsonResponse({ ok: true });
 
-    if (method === 'GET') return handleRead(path);
+    if (method === 'GET') return handleRead(path, new URL(raw, window.location.origin).search);
 
     let body: Body = {};
     const form = init?.body instanceof FormData ? init.body : null;
@@ -402,6 +590,12 @@ export function installDemoMode(): void {
 
     // Импорт: форма ответа нужна странице целиком, содержимое — честно пустое.
     if (path === '/api/import/preview' && method === 'POST') return respond(importPreview(body));
+
+    // Тематическая оценка: решение эксперта с обязательным основанием.
+    const topicDecision = path.match(/^\/api\/science\/publications\/([^/]+)\/topic$/);
+    if (topicDecision && (method === 'POST' || method === 'PATCH')) {
+      return respond(setTopicDecision(topicDecision[1], body));
+    }
 
     // Администрирование: без initial_password страница печатала бы «undefined».
     if (path === '/api/admin/users' && method === 'POST') {
@@ -478,6 +672,14 @@ export function installDemoMode(): void {
   // Состояние поднимается до первой отрисовки: первая загрузка уже
   // видит проекты, а не пустой список.
   loadState(snapshot);
+
+  // Имена лиц для раздела «Научная деятельность»: отдельного справочника
+  // участников в демо нет, имена берутся из общего списка лиц.
+  const names: Record<string, string> = {};
+  for (const person of itemsOf(snapshot, 'persons')) {
+    names[String(person.id)] = String(person.full_name ?? person.id);
+  }
+  setPersonNames(names);
 
   console.info('[демо] работа без сервера. Изменения хранятся в браузере '
     + '(localStorage) и переживают перезагрузку.');

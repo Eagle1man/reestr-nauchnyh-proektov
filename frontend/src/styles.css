@@ -219,7 +219,10 @@ input:disabled, select:disabled, textarea:disabled { background: #f1f4f7; color:
 /* --- Вкладки ----------------------------------------------------------- */
 
 .tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--c-border); margin-bottom: 14px; flex-wrap: wrap; }
-.tabs button {
+/* Кнопка и ссылка выглядят одинаково: раздел «Наука» открыт постоянно,
+   переключение частей сделано ссылками ради адреса и кнопки «назад». */
+.tabs button,
+.tabs a {
   background: none;
   border: none;
   border-bottom: 3px solid transparent;
@@ -230,9 +233,17 @@ input:disabled, select:disabled, textarea:disabled { background: #f1f4f7; color:
   cursor: pointer;
   color: var(--c-muted);
   font-weight: 500;
+  text-decoration: none;
 }
-.tabs button:hover { color: var(--c-accent); }
-.tabs button.active { color: var(--c-accent); border-bottom-color: var(--c-accent); font-weight: 600; }
+.tabs button:hover,
+.tabs a:hover { color: var(--c-accent); }
+.tabs button.active,
+.tabs a.active,
+.tabs .tabs__item--on {
+  color: var(--c-accent);
+  border-bottom-color: var(--c-accent);
+  font-weight: 600;
+}
 
 /* --- Публичная витрина (от 360 пикселей, п.10.2 п.5) -------------------- */
 

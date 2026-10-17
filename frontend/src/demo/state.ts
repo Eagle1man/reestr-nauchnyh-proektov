@@ -16,6 +16,8 @@
  * не возвращаются в систему.
  */
 
+import { science, seedDecisions } from './science';
+
 const STORAGE_KEY = 'rnp.demo.state';
 const STATE_VERSION = 1;
 
@@ -49,6 +51,14 @@ export interface DemoState {
     collections: Record<string, CollectionSet>;
     /** Коды статусов по порядку — движение демо по справочнику. */
     statusOrder: string[];
+    /**
+     * Тематические решения раздела «Научная деятельность» по id публикации.
+     *
+     * Хранятся отдельно от снимка, потому что их меняет эксперт (T-07), и
+     * потому что снимок общий для всех: правка решения не должна выглядеть
+     * как правка исходных данных.
+     */
+    scienceDecisions: Record<string, unknown>;
 }
 
 let state: DemoState | null = null;
@@ -178,7 +188,13 @@ export function seedState(fixtures: Fixtures): DemoState {
   if (!statusOrder.length) statusOrder.push('ST-01', 'ST-02', 'ST-03', 'ST-04',
     'ST-05', 'ST-06', 'ST-07', 'ST-08', 'ST-09', 'ST-10', 'ST-11', 'ST-12');
 
-  return { version: STATE_VERSION, cards, collections, statusOrder };
+  return {
+    version: STATE_VERSION,
+    cards,
+    collections,
+    statusOrder,
+    scienceDecisions: seedDecisions(science) as unknown as Record<string, unknown>,
+  };
 }
 
 /**
@@ -213,6 +229,13 @@ export function loadState(fixtures: Fixtures): DemoState {
     loaded = null;   // хранилище недоступно — начинаем с чистого снимка
   }
   state = loaded ?? seedState(fixtures);
+  // Состояние, сохранённое до появления раздела, поля scienceDecisions не
+  // содержит. Дописываем решения из снимка, иначе раздел открылся бы пустым
+  // у того, кто заходил в демо раньше.
+  if (!state.scienceDecisions) {
+    state.scienceDecisions = seedDecisions(science) as unknown as Record<string, unknown>;
+    persist();
+  }
   return state;
 }
 
