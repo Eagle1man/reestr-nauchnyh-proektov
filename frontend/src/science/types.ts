@@ -21,7 +21,7 @@ export type SciDecisionState =
   | 'pending' | 'auto' | 'awaiting_expert' | 'confirmed' | 'expert_changed' | 'recheck' | 'error';
 
 /** Происхождение записи: демонстрационная или реальная выгрузка (AC-01). */
-export type SciSourceKind = 'demo' | 'elibrary';
+export type SciSourceKind = 'demo' | 'elibrary' | 'scopus';
 
 export interface SciStatus {
   list: string;
@@ -119,6 +119,14 @@ export interface SciPublication {
   registration?: string | null;
   /** Число цитирований в eLIBRARY на дату выгрузки. */
   citations_elibrary?: number;
+  /** Идентификатор Scopus (EID). */
+  scopus_eid?: string | null;
+  /** Том серии конференционных публикаций. */
+  volume?: string | null;
+  /** Ссылка на запись в источнике. */
+  url?: string | null;
+  /** Авторы в источнике не указаны: запись ждёт уточнения (D-03). */
+  needs_author?: boolean;
   /** Замечания к записи: разночтения в самой выгрузке и т. п. */
   source_notes?: string[];
 }
@@ -162,8 +170,12 @@ export interface SciStats {
   passport_version: number;
   /** Записей-демо (не закрывают AC-01). */
   demo_total: number;
-  /** Реальных записей из выгрузки (критерий AC-01 требует минимум 30). */
+  /** Реальных записей из выгрузки eLIBRARY. */
   elibrary_total: number;
+  /** Реальных записей из Scopus. */
+  scopus_total: number;
+  /** Реальных записей всего (критерий AC-01 требует минимум 30). */
+  real_total: number;
 }
 
 export interface SciListResponse {
@@ -171,6 +183,8 @@ export interface SciListResponse {
   total: number;
   stats: SciStats;
   demo_notice?: string;
+  /** Работы, которые источник отдал дважды: одна работа — одна запись (D-06). */
+  excluded_duplicates?: { reason: string; source_title: string; kept_as: string }[];
   filters?: {
     stages: { code: SciStage; title: string }[];
     categories: { code: string; title: string }[];
@@ -251,6 +265,7 @@ export const TYPE_TITLES: Record<string, string> = {
 export const SOURCE_KIND_TITLES: Record<SciSourceKind, string> = {
   demo: 'демо-данные (не eLIBRARY/РИНЦ)',
   elibrary: 'выгрузка eLIBRARY/РИНЦ',
+  scopus: 'Scopus (данные заказчика, вручную)',
 };
 
 /** Сколько реальных записей нужно для приёмки (AC-01). */

@@ -89,6 +89,12 @@
 /* Результат последнего действия: файл выгружен, файл не принят и т. п. */
 .demo-bar__status { color: #ffd166; }
 
+.demo-bar__note {
+  display: block;
+  color: #9fb3c8;
+  font-size: 12px;
+}
+
 .demo-bar__action,
 .demo-bar__reset {
   flex: 0 0 auto;

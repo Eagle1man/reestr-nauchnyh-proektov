@@ -80,7 +80,7 @@ export default function ScienceTopicPage() {
         <Metric value={stats.with_enough_data} label="работ с достаточными данными и решением" />
         <Metric value={stats.without_decision} label="ожидают решения эксперта" />
         <Metric value={stats.without_abstract} label="работ без аннотации (данных недостаточно)" />
-        <Metric value={stats.elibrary_total} label="реальных записей в разделе" />
+        <Metric value={stats.real_total} label="реальных записей в разделе" />
         <Metric value={stats.demo_total} label="записей-демо (в приёмку не идут)" />
       </div>
 
@@ -88,19 +88,20 @@ export default function ScienceTopicPage() {
         <h2 className="card__title">Состояние приёмки по реальным данным</h2>
         <p className="small">
           Критерий AC-01 требует минимум {AC01_REQUIRED} реальных записей
-          eLIBRARY/РИНЦ. В разделе их {stats.elibrary_total}
-          {stats.elibrary_total >= AC01_REQUIRED
+          eLIBRARY/РИНЦ. В разделе их {stats.real_total}
+          {stats.real_total >= AC01_REQUIRED
             ? ' — по количеству критерий закрывается.'
-            : ` — не хватает ${AC01_REQUIRED - stats.elibrary_total}.`}
+            : ` — не хватает ${AC01_REQUIRED - stats.real_total}.`}
+          {' '}Из них eLIBRARY — {stats.elibrary_total}, Scopus — {stats.scopus_total}.
         </p>
-        {stats.elibrary_total < AC01_REQUIRED && (
-          <Alert kind="warn">
-            Выгрузка получена из личного кабинета, а не официальным экспортом
-            организации. Для приёмки нужен экспорт от библиотеки (I-01), а также
-            аннотации и ключевые слова работ: без них тематическая оценка остаётся
-            «Недостаточно данных» (T-02).
-          </Alert>
-        )}
+        <Alert kind={stats.real_total >= AC01_REQUIRED ? 'info' : 'warn'}>
+          Происхождение данных при этом остаётся частичным: выгрузки сделаны
+          заказчиком из личного кабинета и вручную, а не официальным экспортом
+          организации (I-01), и аннотаций в них не было — поэтому тематическая
+          оценка по этим работам остаётся «Недостаточно данных» (T-02). Аннотации
+          отдаёт XML-выгрузка eLIBRARY: их стоит запросить вместе с
+          подтверждением по AuthorID.
+        </Alert>
       </div>
 
       <p className="small muted">

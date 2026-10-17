@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../api';
-import { ErrorAlert, Field, Spinner } from '../../components/ui';
+import { Alert, ErrorAlert, Field, Spinner } from '../../components/ui';
 import type { SciListResponse } from '../../science/types';
 import { AC01_REQUIRED, TYPE_TITLES } from '../../science/types';
 import { Metric, ScienceHead } from './ScienceHead';
@@ -72,13 +72,28 @@ export default function SciencePublicationsPage() {
           label="прямая тематика / оценённых с достаточными данными"
         />
         <Metric value={stats.without_decision} label="ожидают решения эксперта" />
-        <Metric value={stats.elibrary_total} label={`реальных записей (из ${AC01_REQUIRED} по AC-01)`} />
+        <Metric value={stats.real_total} label={`реальных записей (из ${AC01_REQUIRED} по AC-01)`} />
       </div>
       <p className="small muted">
         Паспорт темы версии {stats.passport_version}. Автоматические оценки и работы
         без достаточных данных в прямой доле не участвуют (A-02). Записей-демо
         в разделе: {stats.demo_total} — они не засчитываются в критерий приёмки.
+        Реальных: {stats.real_total} (eLIBRARY — {stats.elibrary_total},
+        {' '}Scopus — {stats.scopus_total}).
       </p>
+
+      {(data.excluded_duplicates?.length ?? 0) > 0 && (
+        <Alert kind="info">
+          Выгрузка отдала {data.excluded_duplicates?.length} работ(ы) по два раза.
+          Одна работа — одна запись (D-06), поэтому повторы не загружены, а сами
+          строки показаны здесь:{' '}
+          {data.excluded_duplicates?.map((item) => (
+            <div key={item.kept_as}>
+              «{item.source_title}» → учтена как <span className="mono">{item.kept_as}</span>
+            </div>
+          ))}
+        </Alert>
+      )}
 
       <div className="card">
         <h2 className="card__title">Фильтры</h2>
@@ -158,8 +173,17 @@ export default function SciencePublicationsPage() {
                     {TYPE_TITLES[publication.type] ?? publication.type}
                     {publication.doi ? ` · DOI ${publication.doi}` : ''}
                     {publication.edn ? ` · EDN ${publication.edn}` : ''}
+                    {publication.scopus_eid ? ` · EID ${publication.scopus_eid}` : ''}
                   </div>
-                  <div className="small muted">{publication.source_kind_title}</div>
+                  <div className="small muted">
+                    {publication.source_kind_title}
+                    {publication.needs_author && ' · авторы в источнике не указаны'}
+                  </div>
+                  <div className="small muted">
+                    {publication.authors.length
+                      ? publication.authors.map((author) => author.name).join(', ')
+                      : '—'}
+                  </div>
                 </td>
                 <td className="small">{publication.venue_title ?? '—'}</td>
                 <td className="nowrap small">{publication.stage_title}</td>

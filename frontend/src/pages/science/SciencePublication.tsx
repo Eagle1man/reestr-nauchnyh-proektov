@@ -124,6 +124,16 @@ export default function SciencePublicationPage() {
             </li>
             <li>DOI: <span className="mono">{publication.doi ?? 'нет данных'}</span></li>
             <li>EDN: <span className="mono">{publication.edn ?? 'нет данных'}</span></li>
+            {publication.scopus_eid && (
+              <li>EID Scopus: <span className="mono">{publication.scopus_eid}</span></li>
+            )}
+            {publication.volume && <li>Том серии: {publication.volume}</li>}
+            {publication.url && (
+              <li>
+                Ссылка в источнике:{' '}
+                <a href={publication.url} target="_blank" rel="noreferrer">{publication.url}</a>
+              </li>
+            )}
             <li>Источник: {publication.source_system}, загружено {fmtDate(publication.imported_at)}</li>
             <li>Происхождение записи: <strong>{publication.source_kind_title}</strong></li>
             {publication.registration && (
@@ -158,6 +168,12 @@ export default function SciencePublicationPage() {
 
       <div className="card">
         <h2 className="card__title">Авторы ({publication.authors.length})</h2>
+        {publication.authors.length === 0 && (
+          <Alert kind="warn">
+            Авторы в источнике не указаны. Подставлять их значило бы выдумать
+            соавторов, поэтому запись ждёт уточнения от автора или библиотеки (D-03).
+          </Alert>
+        )}
         <table>
           <thead>
             <tr><th>Место</th><th>Автор</th><th>Аффилиация</th><th>Подтверждение</th></tr>

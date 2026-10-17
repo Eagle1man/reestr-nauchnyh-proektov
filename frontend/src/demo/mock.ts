@@ -27,7 +27,7 @@ import adminSnapshot from './admin.json';
 import {
   science, scienceStats, setPersonNames, STAGE_TITLES, viewPublication,
   allPublications, allVenues, allParticipants, elibrary, elibraryPersonNames,
-  duplicateSurnameGroups, SOURCE_KIND_TITLES,
+  duplicateSurnameGroups, excludedDuplicates, SOURCE_KIND_TITLES,
   type SciTopicDecision, type SciSourceKind, type Stage,
 } from './science';
 import {
@@ -149,7 +149,7 @@ export const DEMO_ROLES: DemoRole[] = [
     roles: ['prorector'],
     person: {
       id: 'demo-prorector',
-      work_place: 'Ректорат Южного университета (ИУБиП)',
+      work_place: 'Ректорат',
     },
     matrix: {
       is_portfolio: true, is_admin: false, can_import: true,
@@ -163,7 +163,7 @@ export const DEMO_ROLES: DemoRole[] = [
     roles: ['rector'],
     person: {
       id: '2559f682-cb59-47e5-b291-9d2e99c2f3c6',
-      work_place: 'Ректорат Южного университета (ИУБиП)',
+      work_place: 'Ректорат',
     },
     matrix: {
       is_portfolio: true, is_admin: false, can_import: false,
@@ -523,15 +523,23 @@ function handleRead(path: string, search = ''): Response {
  * записей реальных: критерий приёмки AC-01 требует минимум 30, и неполная
  * выгрузка должна быть видна как неполная.
  */
-function scienceNotice(stats: { demo_total: number; elibrary_total: number }): string {
-  const missing = Math.max(0, AC01_REQUIRED - stats.elibrary_total);
-  const source = 'Записи с меткой «выгрузка eLIBRARY/РИНЦ» — реальные, из выгрузки '
-    + `заказчика от ${elibrary.exported_at} по личному кабинету; остальные — демонстрационные. `;
-  if (missing === 0) return `${source}Критерий приёмки AC-01 (${AC01_REQUIRED} реальных `
-    + 'записей) этим набором закрывается; для приёмки нужен официальный экспорт организации.';
-  return `${source}Критерий приёмки AC-01 требует минимум ${AC01_REQUIRED} реальных записей — `
-    + `сейчас ${stats.elibrary_total}, не хватает ${missing}. Выгрузка с личного кабинета `
-    + 'заменяет официальный экспорт организации только частично.';
+function scienceNotice(stats: {
+  demo_total: number; elibrary_total: number; scopus_total: number; real_total: number;
+}): string {
+  const missing = Math.max(0, AC01_REQUIRED - stats.real_total);
+  const source = 'Записи с меткой «выгрузка eLIBRARY/РИНЦ» ('
+    + `${stats.elibrary_total}) и «Scopus» (${stats.scopus_total}) — реальные, `
+    + `из выгрузок заказчика от ${elibrary.exported_at}; остальные `
+    + `${stats.demo_total} — демонстрационные. `;
+  if (missing === 0) {
+    return `${source}Критерий приёмки AC-01 (${AC01_REQUIRED} реальных записей) `
+      + 'по количеству закрыт. Происхождение данных при этом остаётся частичным: '
+      + 'выгрузка сделана из личного кабинета и вручную, а не официальным '
+      + 'экспортом организации, и аннотаций в ней не было.';
+  }
+  return `${source}Критерий приёмки AC-01 требует минимум ${AC01_REQUIRED} реальных `
+    + `записей — сейчас ${stats.real_total}, не хватает ${missing}. Выгрузка с личного `
+    + 'кабинета заменяет официальный экспорт организации только частично.';
 }
 
 /** Решения раздела из состояния: эксперт меняет их, поэтому они не в снимке. */
@@ -613,6 +621,8 @@ function readScience(path: string, search: string): Response | null {
         })),
       },
       demo_notice: notice,
+      // Работы, которые источник отдал дважды: показаны, а не выброшены молча.
+      excluded_duplicates: excludedDuplicates,
     });
   }
 
@@ -627,14 +637,17 @@ function readScience(path: string, search: string): Response | null {
   if (path === '/api/science/venues') {
     const items = allVenues.map((venue) => {
       const works = views.filter((view) => view.venue_id === venue.id);
+      // Издание получает метку по работам: Scopus-переказы не должны
+      // выглядеть частью официальной выгрузки eLIBRARY и наоборот.
+      const kinds = new Set(works.map((work) => work.source_kind));
+      const kind: SciSourceKind = kinds.has('scopus') ? 'scopus'
+        : kinds.has('elibrary') ? 'elibrary' : 'demo';
       return {
         ...venue,
         works_total: works.length,
         works_published: works.filter((work) => work.stage === 'published').length,
-        source_kind: works.some((work) => work.source_kind === 'elibrary') ? 'elibrary' : 'demo',
-        source_kind_title: works.some((work) => work.source_kind === 'elibrary')
-          ? SOURCE_KIND_TITLES.elibrary
-          : SOURCE_KIND_TITLES.demo,
+        source_kind: kind,
+        source_kind_title: SOURCE_KIND_TITLES[kind],
       };
     });
     return jsonResponse({ items, total: items.length, demo_notice: notice });

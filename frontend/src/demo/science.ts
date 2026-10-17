@@ -83,12 +83,12 @@ export interface SciTopicDecision {
 }
 
 /**
- * Происхождение записи: демонстрационная или пришедшая из выгрузки заказчика.
+ * Происхождение записи: демонстрационная или пришедшая из реальной выгрузки.
  *
  * Показывается в интерфейсе и в ответе API отдельным полем, потому что раздел
- * содержит записи двух разных видов, и смешивать их без метки нельзя.
+ * содержит записи трёх разных видов, и смешивать их без метки нельзя.
  */
-export type SciSourceKind = 'demo' | 'elibrary';
+export type SciSourceKind = 'demo' | 'elibrary' | 'scopus';
 
 export interface SciPublication {
   id: string;
@@ -112,12 +112,20 @@ export interface SciPublication {
   keywords_ru: string[];
   authors: SciAuthor[];
   topic: SciTopicDecision;
-  /** Вид записи: 'demo' — синтетика, 'elibrary' — выгрузка заказчика. */
+  /** Вид записи: 'demo' — синтетика, 'elibrary'/'scopus' — реальные выгрузки. */
   source_kind?: SciSourceKind;
   /** Номер регистрации программы для ЭВМ (только для type === 'software'). */
   registration?: string | null;
   /** Число цитирований в eLIBRARY на дату выгрузки (только для реальных). */
   citations_elibrary?: number;
+  /** Идентификатор Scopus (EID) для записей, пришедших из Scopus. */
+  scopus_eid?: string | null;
+  /** Том серии для конференционных публикаций. */
+  volume?: string | null;
+  /** Ссылка на запись в источнике. */
+  url?: string | null;
+  /** Авторы в источнике не указаны: запись ждёт уточнения (D-03). */
+  needs_author?: boolean;
   /** Разночтения в исходной выгрузке (например, разные диапазоны страниц). */
   source_notes?: string[];
 }
@@ -149,6 +157,7 @@ export interface ScienceData {
 export const SOURCE_KIND_TITLES: Record<SciSourceKind, string> = {
   demo: 'демо-данные (не eLIBRARY/РИНЦ)',
   elibrary: 'выгрузка eLIBRARY/РИНЦ',
+  scopus: 'Scopus (данные заказчика, вручную)',
 };
 
 export const science = raw as unknown as ScienceData;
@@ -167,6 +176,7 @@ interface ElibraryVenue {
   publisher: string | null;
   type: string;
   year: string;
+  issn?: string | null;
 }
 
 interface ElibraryWork {
@@ -177,14 +187,27 @@ interface ElibraryWork {
   venue_id: string | null;
   pages?: string | null;
   issue?: string | null;
+  volume?: string | null;
   authors: ElibraryAuthor[];
   registration?: string;
   doi: string | null;
-  edn: string | null;
-  open_access: boolean;
-  citations_elibrary: number;
+  edn?: string | null;
+  open_access?: boolean;
+  citations_elibrary?: number;
+  scopus_eid?: string | null;
+  url?: string | null;
   /** Разночтения внутри самой выгрузки: разные диапазоны страниц и т. п. */
   _page_range_variants?: string[];
+  /** Авторы в источнике не указаны — причина, а не пропуск. */
+  _authors_missing?: string;
+}
+
+interface ScopusData {
+  exported_at: string;
+  source_system: string;
+  provenance: string;
+  author_page: string;
+  publications: ElibraryWork[];
 }
 
 export interface ElibraryData {
@@ -193,9 +216,20 @@ export interface ElibraryData {
   provenance: string;
   venues: ElibraryVenue[];
   publications: ElibraryWork[];
+  /** Работы, которые выгрузка отдала дважды: одна работа — одна запись (D-06). */
+  excluded_duplicates: { reason: string; source_title: string; kept_as: string }[];
+  scopus: ScopusData;
 }
 
 export const elibrary = rawElibrary as unknown as ElibraryData;
+
+/**
+ * Работы, которые источник отдал повторно.
+ *
+ * Показываются в интерфейсе, а не молча выбрасываются: заказчик должен видеть,
+ * что три строки его выгрузки не стали тремя работами и почему.
+ */
+export const excludedDuplicates = elibrary.excluded_duplicates ?? [];
 
 /**
  * Идентификатор автора выгрузки.
@@ -232,8 +266,21 @@ const ELIBRARY_UNIT = 'Южный университет (ИУБиП)';
  * тематическая оценка не выдумывается, а остаётся «Недостаточно данных»
  * (T-02) с состоянием «ожидает анализа». Подставить вместо отсутствующего
  * текста догадку — значит показать заказчику решение, которого нет.
+ *
+ * kind различает eLIBRARY и Scopus: происхождение записи показывается в
+ * интерфейсе, потому что это разные выгрузки с разной степенью доверия.
  */
-function fromElibrary(work: ElibraryWork): SciPublication {
+function fromSource(
+  work: ElibraryWork,
+  kind: SciSourceKind,
+  source: { source_system: string; exported_at: string },
+): SciPublication {
+  const notes: string[] = [];
+  if (work._page_range_variants) {
+    notes.push(`В выгрузке у этой работы разные диапазоны страниц: ${
+      work._page_range_variants.join(', ')}. Оставлен первый вариант (D-02).`);
+  }
+  if (work._authors_missing) notes.push(work._authors_missing);
   return {
     id: work.id,
     type: work.type,
@@ -243,35 +290,39 @@ function fromElibrary(work: ElibraryWork): SciPublication {
     date_precision: 'year',
     published_at: null,
     doi: work.doi,
-    edn: work.edn,
+    edn: work.edn ?? null,
     venue_id: work.venue_id,
     stage: 'published',
     stage_dates: {},
     university_owned: true,
-    ownership_basis: 'выгрузка eLIBRARY по запросу организации',
-    source_system: elibrary.source_system,
+    ownership_basis: kind === 'scopus'
+      ? 'поиск по автору в Scopus; принадлежность организации не подтверждена'
+      : 'выгрузка eLIBRARY по запросу организации',
+    source_system: source.source_system,
     source_record_id: work.id,
-    imported_at: `${elibrary.exported_at}T00:00:00+03:00`,
+    imported_at: `${source.exported_at}T00:00:00+03:00`,
     abstract_ru: null,
     keywords_ru: [],
-    source_kind: 'elibrary',
+    source_kind: kind,
     registration: work.registration ?? null,
     citations_elibrary: work.citations_elibrary,
-    source_notes: work._page_range_variants
-      ? [`В выгрузке у этой работы разные диапазоны страниц: ${
-        work._page_range_variants.join(', ')}. Оставлен первый вариант (D-02).`]
-      : undefined,
+    scopus_eid: work.scopus_eid ?? null,
+    volume: work.volume ?? null,
+    url: work.url ?? null,
+    needs_author: work.authors.length === 0,
+    source_notes: notes.length ? notes : undefined,
     authors: work.authors.map((author, index) => ({
       person_id: elibraryAuthorId(author.full_name),
       order: index + 1,
       affiliation: ELIBRARY_UNIT,
       confirmation: 'source',
-      confirmed_at: elibrary.exported_at,
+      confirmed_at: source.exported_at,
     })),
     topic: {
       category: 'INSUFFICIENT',
       directions: [],
-      explanation: 'В выгрузке нет аннотации и ключевых слов: тематическая оценка не выполнялась до их получения (T-02).',
+      explanation: 'В выгрузке нет аннотации и ключевых слов: тематическая оценка '
+        + 'не выполнялась до их получения (T-02).',
       fragments: [],
       criteria_version: science.topic.version,
       model_version: null,
@@ -282,14 +333,23 @@ function fromElibrary(work: ElibraryWork): SciPublication {
   };
 }
 
-const elibraryPublications: SciPublication[] = elibrary.publications.map(fromElibrary);
+const elibraryPublications: SciPublication[] = elibrary.publications.map((work) => (
+  fromSource(work, 'elibrary', elibrary)
+));
+
+// Scopus — отдельный вид источника: данные пришли вручную, без выгрузки
+// организации, и в двух записях без авторов. Прячем их в общий список было бы
+// неверно, поэтому они идут отдельно и видны в фильтре происхождения.
+const scopusPublications: SciPublication[] = elibrary.scopus.publications.map((work) => (
+  fromSource(work, 'scopus', elibrary.scopus)
+));
 
 const elibraryVenues: SciVenue[] = elibrary.venues.map((venue) => ({
   id: venue.id,
   title: venue.title,
   publisher: venue.publisher ?? 'не указан в выгрузке',
   type: venue.type,
-  issn: null,
+  issn: venue.issn ?? null,
   eissn: null,
   subjects: [],
   // Статус по перечням у этих изданий не проверен: подставлять его из
@@ -299,7 +359,7 @@ const elibraryVenues: SciVenue[] = elibrary.venues.map((venue) => ({
 }));
 
 /** Авторы выгрузки, у которых нет записи участника: заводятся как сотрудники. */
-const elibraryParticipants: SciParticipant[] = elibraryPublications
+const elibraryParticipants: SciParticipant[] = [...elibraryPublications, ...scopusPublications]
   .flatMap((publication) => publication.authors.map((author) => author.person_id))
   .filter((personId, index, all) => all.indexOf(personId) === index)
   .filter((personId) => !science.participants.some((item) => item.person_id === personId))
@@ -312,8 +372,12 @@ const elibraryParticipants: SciParticipant[] = elibraryPublications
     external_ids: [],
   }));
 
-/** Публикации раздела: демо-снимок и реальная выгрузка рядом, но с меткой. */
-export const allPublications: SciPublication[] = [...science.publications, ...elibraryPublications];
+/** Публикации раздела: демо-снимок и реальные выгрузки рядом, но с меткой. */
+export const allPublications: SciPublication[] = [
+  ...science.publications,
+  ...elibraryPublications,
+  ...scopusPublications,
+];
 
 export const allVenues: SciVenue[] = [...science.venues, ...elibraryVenues];
 
@@ -349,14 +413,20 @@ export function duplicateSurnameGroups(): Record<string, string[]> {
 export function sourceBreakdown(publications: SciPublication[]): {
   demo: number;
   elibrary: number;
+  scopus: number;
+  real: number;
 } {
   let demo = 0;
   let elibraryCount = 0;
+  let scopusCount = 0;
   for (const publication of publications) {
     if (publication.source_kind === 'elibrary') elibraryCount += 1;
+    else if (publication.source_kind === 'scopus') scopusCount += 1;
     else demo += 1;
   }
-  return { demo, elibrary: elibraryCount };
+  // Реальными считаются обе выгрузки: Scopus — тоже реальные публикации,
+  // просто они пришли вручную, а не официальным экспортом (AC-01, I-01).
+  return { demo, elibrary: elibraryCount, scopus: scopusCount, real: elibraryCount + scopusCount };
 }
 
 export const STAGE_TITLES: Record<Stage, string> = {
@@ -430,6 +500,9 @@ export function scienceStats(
   passport_version: number;
   demo_total: number;
   elibrary_total: number;
+  scopus_total: number;
+  /** Реальных записей всего: eLIBRARY + Scopus (критерий AC-01). */
+  real_total: number;
 } {
   const categories: Record<string, number> = {};
   let published = 0;
@@ -470,6 +543,8 @@ export function scienceStats(
     passport_version: science.topic.version,
     demo_total: breakdown.demo,
     elibrary_total: breakdown.elibrary,
+    scopus_total: breakdown.scopus,
+    real_total: breakdown.real,
   };
 }
 

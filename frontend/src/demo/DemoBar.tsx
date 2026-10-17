@@ -91,7 +91,9 @@ function UnitGroup({ title, units, items }: {
 function DepartmentsPanel({ data, onClose }: {
   data: Departments; onClose: () => void;
 }) {
-  const chain = ['found', 'president', 'rector', 'rector_office']
+  // Цепочка вершины: корнем дерева теперь «Ректорат» — так он назван
+// в официальной таблице структурных подразделений.
+  const chain = ['rectorat', 'rector_office']
     .map((code) => data.units.find((unit) => unit.code === code))
     .filter((unit): unit is Unit => Boolean(unit));
   const collegial = data.units.filter((unit) => unit.kind === 'коллегиальный орган');
@@ -99,9 +101,9 @@ function DepartmentsPanel({ data, onClose }: {
   // тоже академия по виду, но подчинена директору по маркетингу и в этом
   // перечне была бы лишней.
   const academies = data.units.filter((unit) => unit.kind === 'академия'
-    && unit.parent === 'rector');
+    && unit.parent === 'rectorat');
   const chairs = data.units.filter((unit) => unit.kind === 'кафедра');
-  const blocks = data.units.filter((unit) => unit.parent === 'rector'
+  const blocks = data.units.filter((unit) => unit.parent === 'rectorat'
     && !['кафедра', 'академия', 'коллегиальный орган', 'подразделение']
       .includes(unit.kind));
 
@@ -252,6 +254,13 @@ export default function DemoBar() {
         <span className="demo-bar__text">
           Демо-режим: правки хранятся в вашем браузере и переживают перезагрузку.
           {message && <span className="demo-bar__status"> {message}</span>}
+          {/* Подпись про лица видна на каждой странице: в демо они вымышленные,
+              и без этой оговорки их можно принять за настоящих сотрудников.
+              Реальные данные — только в разделе «Научная деятельность». */}
+          <span className="demo-bar__note">
+            {' '}Лица в демо вымышленные; реальные данные — только в разделе
+            «Научная деятельность» (выгрузка eLIBRARY/РИНЦ и Scopus).
+          </span>
         </span>
 
         <button type="button" className="demo-bar__action" onClick={handleExport}>
