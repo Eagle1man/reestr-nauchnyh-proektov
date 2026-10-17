@@ -85,12 +85,13 @@ export function ScienceVenuesPage() {
               <tr key={venue.id}>
                 <td><Link to={`/science/venues/${venue.id}`}>{venue.title}</Link>
                   <div className="small muted">{venue.publisher}</div>
+                  <div className="small muted">{venue.source_kind_title}</div>
                 </td>
                 <td className="mono nowrap">{venue.issn ?? '—'}</td>
                 <td className="small">
                   {venue.statuses.length
                     ? venue.statuses.map((status) => status.list).join(', ')
-                    : '—'}
+                    : 'не проверялось'}
                 </td>
                 <td>{venue.works_total ?? 0}</td>
                 <td>{venue.works_published ?? 0}</td>

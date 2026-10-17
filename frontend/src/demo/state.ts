@@ -16,7 +16,7 @@
  * не возвращаются в систему.
  */
 
-import { science, seedDecisions } from './science';
+import { seedDecisions } from './science';
 
 const STORAGE_KEY = 'rnp.demo.state';
 const STATE_VERSION = 1;
@@ -193,7 +193,7 @@ export function seedState(fixtures: Fixtures): DemoState {
     cards,
     collections,
     statusOrder,
-    scienceDecisions: seedDecisions(science) as unknown as Record<string, unknown>,
+    scienceDecisions: seedDecisions() as unknown as Record<string, unknown>,
   };
 }
 
@@ -233,9 +233,20 @@ export function loadState(fixtures: Fixtures): DemoState {
   // содержит. Дописываем решения из снимка, иначе раздел открылся бы пустым
   // у того, кто заходил в демо раньше.
   if (!state.scienceDecisions) {
-    state.scienceDecisions = seedDecisions(science) as unknown as Record<string, unknown>;
+    state.scienceDecisions = seedDecisions() as unknown as Record<string, unknown>;
     persist();
   }
+  // Записи выгрузки eLIBRARY могли появиться позже, чем было сохранено
+  // состояние. Без дозаписи их решений карточка такой работы открывалась бы
+  // пустой: решение эксперта есть, а показать нечего.
+  let patched = false;
+  for (const [publicationId, decision] of Object.entries(seedDecisions())) {
+    if (!state.scienceDecisions[publicationId]) {
+      state.scienceDecisions[publicationId] = decision;
+      patched = true;
+    }
+  }
+  if (patched) persist();
   return state;
 }
 

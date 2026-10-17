@@ -12,7 +12,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { Alert, ErrorAlert, Spinner } from '../../components/ui';
 import type { SciTopicResponse } from '../../science/types';
-import { fmtDate } from '../../science/types';
+import { AC01_REQUIRED, fmtDate } from '../../science/types';
 import { Metric, ScienceHead } from './ScienceHead';
 
 export default function ScienceTopicPage() {
@@ -80,6 +80,27 @@ export default function ScienceTopicPage() {
         <Metric value={stats.with_enough_data} label="работ с достаточными данными и решением" />
         <Metric value={stats.without_decision} label="ожидают решения эксперта" />
         <Metric value={stats.without_abstract} label="работ без аннотации (данных недостаточно)" />
+        <Metric value={stats.elibrary_total} label="реальных записей в разделе" />
+        <Metric value={stats.demo_total} label="записей-демо (в приёмку не идут)" />
+      </div>
+
+      <div className="card">
+        <h2 className="card__title">Состояние приёмки по реальным данным</h2>
+        <p className="small">
+          Критерий AC-01 требует минимум {AC01_REQUIRED} реальных записей
+          eLIBRARY/РИНЦ. В разделе их {stats.elibrary_total}
+          {stats.elibrary_total >= AC01_REQUIRED
+            ? ' — по количеству критерий закрывается.'
+            : ` — не хватает ${AC01_REQUIRED - stats.elibrary_total}.`}
+        </p>
+        {stats.elibrary_total < AC01_REQUIRED && (
+          <Alert kind="warn">
+            Выгрузка получена из личного кабинета, а не официальным экспортом
+            организации. Для приёмки нужен экспорт от библиотеки (I-01), а также
+            аннотации и ключевые слова работ: без них тематическая оценка остаётся
+            «Недостаточно данных» (T-02).
+          </Alert>
+        )}
       </div>
 
       <p className="small muted">

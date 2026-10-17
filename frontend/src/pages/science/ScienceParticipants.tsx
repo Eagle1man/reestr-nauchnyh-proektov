@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../api';
-import { ErrorAlert, Spinner } from '../../components/ui';
+import { Alert, ErrorAlert, Spinner } from '../../components/ui';
 import type {
   SciParticipantResponse, SciParticipantsResponse,
 } from '../../science/types';
@@ -66,7 +66,12 @@ export function ScienceParticipantsPage() {
                 </td>
                 <td className="small">{participant.unit ?? '—'}</td>
                 <td className="small">
-                  {participant.external_ids.length === 0 ? '—' : participant.external_ids.map((id) => (
+                  {participant.external_ids.length === 0 ? (
+                    <span className="muted">
+                      не переданы
+                      {participant.ids_unverified ? ' (в выгрузке не было)' : ''}
+                    </span>
+                  ) : participant.external_ids.map((id) => (
                     <div key={id.system}>
                       <span className="mono">{id.value}</span>
                       <span className="muted"> · {id.system} · {ID_STATUS_TITLES[id.status] ?? id.status}</span>
@@ -81,6 +86,20 @@ export function ScienceParticipantsPage() {
           </tbody>
         </table>
       </div>
+
+      {Object.keys(data.duplicates ?? {}).length > 0 && (
+        <Alert kind="warn">
+          В выгрузке одна фамилия записана несколькими способами — по всей
+          видимости, это один человек, но записи не объединены: без AuthorID
+          или ORCID склейка была бы догадкой (D-02). Требуется сверка
+          библиотекой:{' '}
+          {Object.entries(data.duplicates ?? {}).map(([surname, names]) => (
+            <span key={surname}>
+              <strong>{surname}</strong>: {names.join(' / ')}.{' '}
+            </span>
+          ))}
+        </Alert>
+      )}
     </>
   );
 }

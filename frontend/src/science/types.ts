@@ -20,6 +20,9 @@ export type SciAvailability = 'confirmed' | 'not_found' | 'error' | 'stale';
 export type SciDecisionState =
   | 'pending' | 'auto' | 'awaiting_expert' | 'confirmed' | 'expert_changed' | 'recheck' | 'error';
 
+/** Происхождение записи: демонстрационная или реальная выгрузка (AC-01). */
+export type SciSourceKind = 'demo' | 'elibrary';
+
 export interface SciStatus {
   list: string;
   level: number | null;
@@ -41,6 +44,8 @@ export interface SciVenue {
   status_history?: SciStatus[];
   works_total?: number;
   works_published?: number;
+  source_kind?: SciSourceKind;
+  source_kind_title?: string;
 }
 
 export interface SciAuthor {
@@ -108,6 +113,14 @@ export interface SciPublication {
   category_title: string;
   topic_state_title: string;
   direction_titles: string[];
+  source_kind: SciSourceKind;
+  source_kind_title: string;
+  /** Номер регистрации программы для ЭВМ (свидетельства Роспатента). */
+  registration?: string | null;
+  /** Число цитирований в eLIBRARY на дату выгрузки. */
+  citations_elibrary?: number;
+  /** Замечания к записи: разночтения в самой выгрузке и т. п. */
+  source_notes?: string[];
 }
 
 export interface SciParticipant {
@@ -118,6 +131,8 @@ export interface SciParticipant {
   unit: string | null;
   periods: { from: string; to: string | null; category: string; unit: string }[];
   external_ids: { system: string; value: string; status: string }[];
+  /** Идентификаторов нет вовсе: у реальных авторов выгрузки их не было. */
+  ids_unverified?: boolean;
   works_total: number;
   works_published: number;
   confirmed_topics: number;
@@ -145,6 +160,10 @@ export interface SciStats {
   without_decision: number;
   categories: Record<string, number>;
   passport_version: number;
+  /** Записей-демо (не закрывают AC-01). */
+  demo_total: number;
+  /** Реальных записей из выгрузки (критерий AC-01 требует минимум 30). */
+  elibrary_total: number;
 }
 
 export interface SciListResponse {
@@ -156,6 +175,7 @@ export interface SciListResponse {
     stages: { code: SciStage; title: string }[];
     categories: { code: string; title: string }[];
     years: number[];
+    sources: { code: SciSourceKind; title: string }[];
   };
 }
 
@@ -181,6 +201,8 @@ export interface SciParticipantsResponse {
   items: SciParticipant[];
   total: number;
   stats: SciStats;
+  /** Фамилии, записанные в источнике несколькими способами (требуют сверки). */
+  duplicates?: Record<string, string[]>;
   demo_notice?: string;
 }
 
@@ -223,7 +245,16 @@ export const TYPE_TITLES: Record<string, string> = {
   conference_paper: 'материалы конференции',
   dataset: 'набор данных',
   product: 'цифровой продукт',
+  software: 'программа для ЭВМ (свидетельство о регистрации)',
 };
+
+export const SOURCE_KIND_TITLES: Record<SciSourceKind, string> = {
+  demo: 'демо-данные (не eLIBRARY/РИНЦ)',
+  elibrary: 'выгрузка eLIBRARY/РИНЦ',
+};
+
+/** Сколько реальных записей нужно для приёмки (AC-01). */
+export const AC01_REQUIRED = 30;
 
 export function fmtDate(value: string | null | undefined): string {
   return value ? value.slice(0, 10).replace(/-/g, '.') : '—';

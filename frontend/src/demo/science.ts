@@ -17,6 +17,7 @@
  * вместе со знаменателем (A-02).
  */
 import raw from './science.json';
+import rawElibrary from './elibrary.json';
 
 export type Stage = 'manuscript' | 'submitted' | 'accepted' | 'published';
 
@@ -81,6 +82,14 @@ export interface SciTopicDecision {
   machine?: MachineAnswer | null;
 }
 
+/**
+ * Происхождение записи: демонстрационная или пришедшая из выгрузки заказчика.
+ *
+ * Показывается в интерфейсе и в ответе API отдельным полем, потому что раздел
+ * содержит записи двух разных видов, и смешивать их без метки нельзя.
+ */
+export type SciSourceKind = 'demo' | 'elibrary';
+
 export interface SciPublication {
   id: string;
   type: string;
@@ -103,6 +112,14 @@ export interface SciPublication {
   keywords_ru: string[];
   authors: SciAuthor[];
   topic: SciTopicDecision;
+  /** Вид записи: 'demo' — синтетика, 'elibrary' — выгрузка заказчика. */
+  source_kind?: SciSourceKind;
+  /** Номер регистрации программы для ЭВМ (только для type === 'software'). */
+  registration?: string | null;
+  /** Число цитирований в eLIBRARY на дату выгрузки (только для реальных). */
+  citations_elibrary?: number;
+  /** Разночтения в исходной выгрузке (например, разные диапазоны страниц). */
+  source_notes?: string[];
 }
 
 export interface SciParticipant {
@@ -129,7 +146,218 @@ export interface ScienceData {
   publications: SciPublication[];
 }
 
+export const SOURCE_KIND_TITLES: Record<SciSourceKind, string> = {
+  demo: 'демо-данные (не eLIBRARY/РИНЦ)',
+  elibrary: 'выгрузка eLIBRARY/РИНЦ',
+};
+
 export const science = raw as unknown as ScienceData;
+
+/* --------------------------------------------------------------------------
+ * Выгрузка eLIBRARY/РИНЦ, предоставленная заказчиком.
+ * -------------------------------------------------------------------------- */
+
+interface ElibraryAuthor {
+  full_name: string;
+}
+
+interface ElibraryVenue {
+  id: string;
+  title: string;
+  publisher: string | null;
+  type: string;
+  year: string;
+}
+
+interface ElibraryWork {
+  id: string;
+  type: string;
+  title_ru: string;
+  year: number;
+  venue_id: string | null;
+  pages?: string | null;
+  issue?: string | null;
+  authors: ElibraryAuthor[];
+  registration?: string;
+  doi: string | null;
+  edn: string | null;
+  open_access: boolean;
+  citations_elibrary: number;
+  /** Разночтения внутри самой выгрузки: разные диапазоны страниц и т. п. */
+  _page_range_variants?: string[];
+}
+
+export interface ElibraryData {
+  exported_at: string;
+  source_system: string;
+  provenance: string;
+  venues: ElibraryVenue[];
+  publications: ElibraryWork[];
+}
+
+export const elibrary = rawElibrary as unknown as ElibraryData;
+
+/**
+ * Идентификатор автора выгрузки.
+ *
+ * Авторы из выгрузки — настоящие люди, их нет в демонстрационном списке лиц,
+ * поэтому им выдаются собственные идентификаторы с префиксом 'el-', а имена
+ * хранятся здесь же: подставлять их неоткуда.
+ */
+const elibraryAuthorIds = new Map<string, string>();
+
+export function elibraryAuthorId(fullName: string): string {
+  const existing = elibraryAuthorIds.get(fullName);
+  if (existing) return existing;
+  const created = `el-a${elibraryAuthorIds.size + 1}`;
+  elibraryAuthorIds.set(fullName, created);
+  return created;
+}
+
+/** Имена авторов выгрузки: подключаются к общему списку лиц демо. */
+export function elibraryPersonNames(): Record<string, string> {
+  const names: Record<string, string> = {};
+  for (const work of elibrary.publications) {
+    for (const author of work.authors) names[elibraryAuthorId(author.full_name)] = author.full_name;
+  }
+  return names;
+}
+
+const ELIBRARY_UNIT = 'Южный университет (ИУБиП)';
+
+/**
+ * Запись выгрузки в общей форме раздела.
+ *
+ * Ключевое решение: у выгрузки нет аннотаций и ключевых слов, поэтому
+ * тематическая оценка не выдумывается, а остаётся «Недостаточно данных»
+ * (T-02) с состоянием «ожидает анализа». Подставить вместо отсутствующего
+ * текста догадку — значит показать заказчику решение, которого нет.
+ */
+function fromElibrary(work: ElibraryWork): SciPublication {
+  return {
+    id: work.id,
+    type: work.type,
+    title_ru: work.title_ru,
+    title_en: null,
+    year: work.year,
+    date_precision: 'year',
+    published_at: null,
+    doi: work.doi,
+    edn: work.edn,
+    venue_id: work.venue_id,
+    stage: 'published',
+    stage_dates: {},
+    university_owned: true,
+    ownership_basis: 'выгрузка eLIBRARY по запросу организации',
+    source_system: elibrary.source_system,
+    source_record_id: work.id,
+    imported_at: `${elibrary.exported_at}T00:00:00+03:00`,
+    abstract_ru: null,
+    keywords_ru: [],
+    source_kind: 'elibrary',
+    registration: work.registration ?? null,
+    citations_elibrary: work.citations_elibrary,
+    source_notes: work._page_range_variants
+      ? [`В выгрузке у этой работы разные диапазоны страниц: ${
+        work._page_range_variants.join(', ')}. Оставлен первый вариант (D-02).`]
+      : undefined,
+    authors: work.authors.map((author, index) => ({
+      person_id: elibraryAuthorId(author.full_name),
+      order: index + 1,
+      affiliation: ELIBRARY_UNIT,
+      confirmation: 'source',
+      confirmed_at: elibrary.exported_at,
+    })),
+    topic: {
+      category: 'INSUFFICIENT',
+      directions: [],
+      explanation: 'В выгрузке нет аннотации и ключевых слов: тематическая оценка не выполнялась до их получения (T-02).',
+      fragments: [],
+      criteria_version: science.topic.version,
+      model_version: null,
+      state: 'pending',
+      analyzed_at: null,
+      expert_at: null,
+    },
+  };
+}
+
+const elibraryPublications: SciPublication[] = elibrary.publications.map(fromElibrary);
+
+const elibraryVenues: SciVenue[] = elibrary.venues.map((venue) => ({
+  id: venue.id,
+  title: venue.title,
+  publisher: venue.publisher ?? 'не указан в выгрузке',
+  type: venue.type,
+  issn: null,
+  eissn: null,
+  subjects: [],
+  // Статус по перечням у этих изданий не проверен: подставлять его из
+  // названия журнала — значит выдумать результат проверки (T-03).
+  statuses: [],
+  status_history: [],
+}));
+
+/** Авторы выгрузки, у которых нет записи участника: заводятся как сотрудники. */
+const elibraryParticipants: SciParticipant[] = elibraryPublications
+  .flatMap((publication) => publication.authors.map((author) => author.person_id))
+  .filter((personId, index, all) => all.indexOf(personId) === index)
+  .filter((personId) => !science.participants.some((item) => item.person_id === personId))
+  .map((personId) => ({
+    person_id: personId,
+    category: 'staff',
+    periods: [{ from: elibrary.exported_at, to: null, category: 'staff', unit: ELIBRARY_UNIT }],
+    // Идентификаторы (AuthorID, ORCID) в выгрузке не переданы, поэтому
+    // участник числится неподтверждённым — это видно на странице «Участники».
+    external_ids: [],
+  }));
+
+/** Публикации раздела: демо-снимок и реальная выгрузка рядом, но с меткой. */
+export const allPublications: SciPublication[] = [...science.publications, ...elibraryPublications];
+
+export const allVenues: SciVenue[] = [...science.venues, ...elibraryVenues];
+
+export const allParticipants: SciParticipant[] = [
+  ...science.participants,
+  ...elibraryParticipants,
+];
+
+/**
+ * Фамилии, записанные в выгрузке несколькими способами.
+ *
+ * Например, «Акперов Г.И.», «Акперов Г.И.О.» и «Акперов И.Г.О.» — по всему
+ * один и тот же человек, но объединять их без AuthorID/ORCID значит угадать
+ * (D-02). Поэтому такие группы не склеиваются, а показываются в интерфейсе:
+ * заказчик должен увидеть, что такие записи требует сверить, а не молча
+ * получить объединённую строку.
+ */
+export function duplicateSurnameGroups(): Record<string, string[]> {
+  const bySurname: Record<string, Set<string>> = {};
+  for (const name of Object.values(elibraryPersonNames())) {
+    const surname = name.trim().split(/\s+/)[0];
+    bySurname[surname] = bySurname[surname] ?? new Set<string>();
+    bySurname[surname].add(name);
+  }
+  const groups: Record<string, string[]> = {};
+  for (const [surname, names] of Object.entries(bySurname)) {
+    if (names.size > 1) groups[surname] = [...names].sort();
+  }
+  return groups;
+}
+
+/** Счётчик по источникам: показывает, сколько записей реальных. */
+export function sourceBreakdown(publications: SciPublication[]): {
+  demo: number;
+  elibrary: number;
+} {
+  let demo = 0;
+  let elibraryCount = 0;
+  for (const publication of publications) {
+    if (publication.source_kind === 'elibrary') elibraryCount += 1;
+    else demo += 1;
+  }
+  return { demo, elibrary: elibraryCount };
+}
 
 export const STAGE_TITLES: Record<Stage, string> = {
   manuscript: 'рукопись',
@@ -149,10 +377,18 @@ export const TOPIC_STATE_TITLES: Record<SciTopicDecision['state'], string> = {
   error: 'ошибка',
 };
 
-/** Решения раздела хранятся отдельно от снимка: их меняет эксперт (T-07). */
-export function seedDecisions(data: ScienceData): Record<string, SciTopicDecision> {
+/**
+ * Решения раздела хранятся отдельно от снимка: их меняет эксперт (T-07).
+ *
+ * Берутся все публикации раздела, включая выгрузку eLIBRARY: иначе у реальных
+ * записей не было бы начального состояния, и первое же решение эксперта
+ * отличалось бы от остальных только потому, что их забыли посеять.
+ */
+export function seedDecisions(
+  publications: SciPublication[] = allPublications,
+): Record<string, SciTopicDecision> {
   const decisions: Record<string, SciTopicDecision> = {};
-  for (const publication of data.publications) {
+  for (const publication of publications) {
     const topic = { ...publication.topic };
     decisions[publication.id] = {
       ...topic,
@@ -192,6 +428,8 @@ export function scienceStats(
   without_decision: number;
   categories: Record<string, number>;
   passport_version: number;
+  demo_total: number;
+  elibrary_total: number;
 } {
   const categories: Record<string, number> = {};
   let published = 0;
@@ -202,6 +440,7 @@ export function scienceStats(
   let withEnoughData = 0;
   let withoutDecision = 0;
   const authors = new Set<string>();
+  const breakdown = sourceBreakdown(publications);
 
   for (const publication of publications) {
     const decision = decisions[publication.id] ?? publication.topic;
@@ -229,6 +468,8 @@ export function scienceStats(
     without_decision: withoutDecision,
     categories,
     passport_version: science.topic.version,
+    demo_total: breakdown.demo,
+    elibrary_total: breakdown.elibrary,
   };
 }
 
@@ -238,7 +479,7 @@ export function viewPublication(
   decisions: Record<string, SciTopicDecision>,
 ) {
   const decision = decisions[publication.id] ?? publication.topic;
-  const venue = science.venues.find((item) => item.id === publication.venue_id) ?? null;
+  const venue = allVenues.find((item) => item.id === publication.venue_id) ?? null;
   const directionTitles = decision.directions.map(
     (code) => science.topic.directions.find((item) => item.code === code)?.title ?? code,
   );
@@ -248,6 +489,8 @@ export function viewPublication(
     venue_title: venue?.title ?? null,
     venue_issn: venue?.issn ?? null,
     stage_title: STAGE_TITLES[publication.stage],
+    source_kind: publication.source_kind ?? 'demo',
+    source_kind_title: SOURCE_KIND_TITLES[publication.source_kind ?? 'demo'],
     category_title: science.topic.categories.find((item) => item.code === decision.category)?.title
       ?? decision.category,
     topic_state_title: TOPIC_STATE_TITLES[decision.state],

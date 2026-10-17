@@ -11,10 +11,10 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../api';
 import { ErrorAlert, Field, Spinner } from '../../components/ui';
 import type { SciListResponse } from '../../science/types';
-import { TYPE_TITLES } from '../../science/types';
+import { AC01_REQUIRED, TYPE_TITLES } from '../../science/types';
 import { Metric, ScienceHead } from './ScienceHead';
 
-const EMPTY_FILTERS = { stage: '', category: '', year: '', q: '' };
+const EMPTY_FILTERS = { stage: '', category: '', year: '', source: '', q: '' };
 
 export default function SciencePublicationsPage() {
   const [params, setParams] = useSearchParams();
@@ -25,6 +25,7 @@ export default function SciencePublicationsPage() {
     stage: params.get('stage') ?? EMPTY_FILTERS.stage,
     category: params.get('category') ?? EMPTY_FILTERS.category,
     year: params.get('year') ?? EMPTY_FILTERS.year,
+    source: params.get('source') ?? EMPTY_FILTERS.source,
     q: params.get('q') ?? EMPTY_FILTERS.q,
   };
 
@@ -71,10 +72,12 @@ export default function SciencePublicationsPage() {
           label="прямая тематика / оценённых с достаточными данными"
         />
         <Metric value={stats.without_decision} label="ожидают решения эксперта" />
+        <Metric value={stats.elibrary_total} label={`реальных записей (из ${AC01_REQUIRED} по AC-01)`} />
       </div>
       <p className="small muted">
         Паспорт темы версии {stats.passport_version}. Автоматические оценки и работы
-        без достаточных данных в прямой доле не участвуют (A-02).
+        без достаточных данных в прямой доле не участвуют (A-02). Записей-демо
+        в разделе: {stats.demo_total} — они не засчитываются в критерий приёмки.
       </p>
 
       <div className="card">
@@ -113,6 +116,17 @@ export default function SciencePublicationsPage() {
               ))}
             </select>
           </Field>
+          <Field label="Происхождение записи">
+            <select
+              value={filters.source}
+              onChange={(event) => setFilter('source', event.target.value)}
+            >
+              <option value="">все</option>
+              {data.filters?.sources.map((source) => (
+                <option key={source.code} value={source.code}>{source.title}</option>
+              ))}
+            </select>
+          </Field>
           <Field label="Поиск по названию, изданию, автору">
             <input
               value={filters.q}
@@ -145,6 +159,7 @@ export default function SciencePublicationsPage() {
                     {publication.doi ? ` · DOI ${publication.doi}` : ''}
                     {publication.edn ? ` · EDN ${publication.edn}` : ''}
                   </div>
+                  <div className="small muted">{publication.source_kind_title}</div>
                 </td>
                 <td className="small">{publication.venue_title ?? '—'}</td>
                 <td className="nowrap small">{publication.stage_title}</td>

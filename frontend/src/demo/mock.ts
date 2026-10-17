@@ -26,13 +26,18 @@ import fixtures from './fixtures.json';
 import adminSnapshot from './admin.json';
 import {
   science, scienceStats, setPersonNames, STAGE_TITLES, viewPublication,
-  type SciTopicDecision, type Stage,
+  allPublications, allVenues, allParticipants, elibrary, elibraryPersonNames,
+  duplicateSurnameGroups, SOURCE_KIND_TITLES,
+  type SciTopicDecision, type SciSourceKind, type Stage,
 } from './science';
 import {
   bodyOf, COLLECTION_GROUPS, exportState, importState, itemsOf, loadState, makeId,
   mutate, nextStatusCode, resetState, shapeList, structuralDefaults, syncCounts,
   type CollectionSet, type DemoState, type Fixtures,
 } from './state';
+// Порог приёмки берётся из контракта раздела, а не дублируется в демо:
+// значение одно, иначе плашка и критерий разойдутся.
+import { AC01_REQUIRED } from '../science/types';
 
 const KEY = 'rnp.token';
 const DEMO_TOKEN = 'demo-mode-no-server';
@@ -514,10 +519,20 @@ function handleRead(path: string, search = ''): Response {
  *
  * Показывается в интерфейсе демо намеренно: ТЗ мониторинга прямо запрещает
  * подменять реальные данные eLIBRARY/РИНЦ демонстрационными, поэтому замалчивать
- * происхождение записей было бы искажением.
+ * происхождение записей было бы искажением. Плашка также говорит, сколько
+ * записей реальных: критерий приёмки AC-01 требует минимум 30, и неполная
+ * выгрузка должна быть видна как неполная.
  */
-const SCIENCE_NOTICE = 'Демонстрационные данные: это не выгрузка eLIBRARY/РИНЦ. '
-  + 'Критерий приёмки AC-01 (импорт минимум 30 реальных записей) демо не закрывает.';
+function scienceNotice(stats: { demo_total: number; elibrary_total: number }): string {
+  const missing = Math.max(0, AC01_REQUIRED - stats.elibrary_total);
+  const source = 'Записи с меткой «выгрузка eLIBRARY/РИНЦ» — реальные, из выгрузки '
+    + `заказчика от ${elibrary.exported_at} по личному кабинету; остальные — демонстрационные. `;
+  if (missing === 0) return `${source}Критерий приёмки AC-01 (${AC01_REQUIRED} реальных `
+    + 'записей) этим набором закрывается; для приёмки нужен официальный экспорт организации.';
+  return `${source}Критерий приёмки AC-01 требует минимум ${AC01_REQUIRED} реальных записей — `
+    + `сейчас ${stats.elibrary_total}, не хватает ${missing}. Выгрузка с личного кабинета `
+    + 'заменяет официальный экспорт организации только частично.';
+}
 
 /** Решения раздела из состояния: эксперт меняет их, поэтому они не в снимке. */
 function scienceDecisionsOf(): Record<string, SciTopicDecision> {
@@ -528,19 +543,21 @@ function scienceDecisionsOf(): Record<string, SciTopicDecision> {
 function scienceParticipants() {
   const decisions = scienceDecisionsOf();
   const persons = itemsOf(snapshot, 'persons');
-  return science.participants.map((participant) => {
+  return allParticipants.map((participant) => {
     const person = persons.find((item) => String(item.id) === participant.person_id);
-    const works = science.publications.filter((publication) => publication.authors
+    const works = allPublications.filter((publication) => publication.authors
       .some((author) => author.person_id === participant.person_id));
     const current = participant.periods.find((period) => period.to === null) ?? participant.periods[0];
     return {
       person_id: participant.person_id,
-      name: String(person?.full_name ?? participant.person_id),
+      name: String(person?.full_name ?? elibraryPersonNames()[participant.person_id]
+        ?? participant.person_id),
       position: person?.position ?? null,
       category: participant.category,
       unit: current?.unit ?? null,
       periods: participant.periods,
       external_ids: participant.external_ids,
+      ids_unverified: participant.external_ids.length === 0,
       works_total: works.length,
       works_published: works.filter((work) => work.stage === 'published').length,
       confirmed_topics: works.filter((work) => {
@@ -556,22 +573,27 @@ function readScience(path: string, search: string): Response | null {
   if (!path.startsWith('/api/science/')) return null;
   const params = new URLSearchParams(search);
   const decisions = scienceDecisionsOf();
-  const views = science.publications.map((item) => viewPublication(item, decisions));
-  const stats = scienceStats(science.publications, decisions);
+  const views = allPublications.map((item) => viewPublication(item, decisions));
+  const stats = scienceStats(allPublications, decisions);
+  const notice = scienceNotice(stats);
 
   if (path === '/api/science/topic') {
-    return jsonResponse({ passport: science.topic, stats, demo_notice: SCIENCE_NOTICE });
+    return jsonResponse({
+      passport: science.topic, stats, demo_notice: notice, source_notice: notice,
+    });
   }
 
   if (path === '/api/science/publications') {
     const stage = params.get('stage') ?? '';
     const category = params.get('category') ?? '';
     const year = params.get('year') ?? '';
+    const source = params.get('source') ?? '';
     const query = (params.get('q') ?? '').trim().toLowerCase();
     const items = views.filter((view) => (
       (!stage || view.stage === stage)
       && (!category || view.topic.category === category)
       && (!year || String(view.year) === year)
+      && (!source || view.source_kind === source)
       && (!query || `${view.title_ru} ${view.venue_title ?? ''} ${
         view.authors.map((author) => author.name).join(' ')}`
         .toLowerCase().includes(query))
@@ -586,8 +608,11 @@ function readScience(path: string, search: string): Response | null {
         })),
         categories: science.topic.categories,
         years: [...new Set(views.map((view) => view.year))].sort((a, b) => b - a),
+        sources: (Object.keys(SOURCE_KIND_TITLES) as SciSourceKind[]).map((code) => ({
+          code, title: SOURCE_KIND_TITLES[code],
+        })),
       },
-      demo_notice: SCIENCE_NOTICE,
+      demo_notice: notice,
     });
   }
 
@@ -595,36 +620,48 @@ function readScience(path: string, search: string): Response | null {
   if (publication) {
     const view = views.find((item) => item.id === publication[1]);
     if (!view) return jsonResponse({ detail: 'Публикация не найдена' }, 404);
-    const venue = science.venues.find((item) => item.id === view.venue_id) ?? null;
-    return jsonResponse({ publication: view, venue, demo_notice: SCIENCE_NOTICE });
+    const venue = allVenues.find((item) => item.id === view.venue_id) ?? null;
+    return jsonResponse({ publication: view, venue, demo_notice: notice });
   }
 
   if (path === '/api/science/venues') {
-    const items = science.venues.map((venue) => {
+    const items = allVenues.map((venue) => {
       const works = views.filter((view) => view.venue_id === venue.id);
       return {
         ...venue,
         works_total: works.length,
         works_published: works.filter((work) => work.stage === 'published').length,
+        source_kind: works.some((work) => work.source_kind === 'elibrary') ? 'elibrary' : 'demo',
+        source_kind_title: works.some((work) => work.source_kind === 'elibrary')
+          ? SOURCE_KIND_TITLES.elibrary
+          : SOURCE_KIND_TITLES.demo,
       };
     });
-    return jsonResponse({ items, total: items.length, demo_notice: SCIENCE_NOTICE });
+    return jsonResponse({ items, total: items.length, demo_notice: notice });
   }
 
   const venue = path.match(/^\/api\/science\/venues\/([^/]+)$/);
   if (venue) {
-    const item = science.venues.find((entry) => entry.id === venue[1]);
+    const item = allVenues.find((entry) => entry.id === venue[1]);
     if (!item) return jsonResponse({ detail: 'Издание не найдено' }, 404);
     return jsonResponse({
       venue: item,
       publications: views.filter((view) => view.venue_id === item.id),
-      demo_notice: SCIENCE_NOTICE,
+      demo_notice: notice,
     });
   }
 
   if (path === '/api/science/participants') {
     const items = scienceParticipants();
-    return jsonResponse({ items, total: items.length, stats, demo_notice: SCIENCE_NOTICE });
+    return jsonResponse({
+      items,
+      total: items.length,
+      stats,
+      // Фамилии, записанные в выгрузке по-разному: показываются, а не
+      // объединяются — без AuthorID/ORCID склейка была бы догадкой (D-02).
+      duplicates: duplicateSurnameGroups(),
+      demo_notice: notice,
+    });
   }
 
   const participant = path.match(/^\/api\/science\/participants\/([^/]+)$/);
@@ -634,7 +671,7 @@ function readScience(path: string, search: string): Response | null {
     const works = views.filter((view) => view.authors
       .some((author) => author.person_id === item.person_id));
     return jsonResponse({
-      participant: item, publications: works, demo_notice: SCIENCE_NOTICE,
+      participant: item, publications: works, demo_notice: notice,
     });
   }
 
@@ -822,9 +859,10 @@ export function installDemoMode(): void {
   // видит проекты, а не пустой список.
   loadState(snapshot);
 
-  // Имена лиц для раздела «Научная деятельность»: отдельного справочника
-  // участников в демо нет, имена берутся из общего списка лиц.
-  const names: Record<string, string> = {};
+  // Имена лиц для раздела «Научная деятельность»: берутся из общего списка
+  // лиц демо, а авторы выгрузки eLIBRARY добавляются своими идентификаторами —
+  // в демо-снимке этих людей нет, и подменять их выдуманными нельзя.
+  const names: Record<string, string> = elibraryPersonNames();
   for (const person of itemsOf(snapshot, 'persons')) {
     names[String(person.id)] = String(person.full_name ?? person.id);
   }

@@ -103,6 +103,10 @@ export default function SciencePublicationPage() {
       {notice && <Alert kind="ok">{notice}</Alert>}
       {error && data && <ErrorAlert error={error} />}
 
+      {publication.source_notes?.map((text) => (
+        <Alert key={text} kind="warn">{text}</Alert>
+      ))}
+
       <div className="grid grid--2">
         <div className="card">
           <h2 className="card__title">Библиография и стадия</h2>
@@ -121,6 +125,15 @@ export default function SciencePublicationPage() {
             <li>DOI: <span className="mono">{publication.doi ?? 'нет данных'}</span></li>
             <li>EDN: <span className="mono">{publication.edn ?? 'нет данных'}</span></li>
             <li>Источник: {publication.source_system}, загружено {fmtDate(publication.imported_at)}</li>
+            <li>Происхождение записи: <strong>{publication.source_kind_title}</strong></li>
+            {publication.registration && (
+              <li>Регистрация программы для ЭВМ: <span className="mono">{publication.registration}</span></li>
+            )}
+            {publication.citations_elibrary !== undefined && (
+              <li>
+                Цитирований в eLIBRARY на дату выгрузки: {publication.citations_elibrary}
+              </li>
+            )}
             <li>
               Принадлежность университету: {publication.university_owned ? 'да' : 'нет'}
               {' '}— {publication.ownership_basis}
@@ -178,9 +191,9 @@ export default function SciencePublicationPage() {
           </>
         ) : (
           <Alert kind="warn">
-            Аннотация отсутствует: тематическая оценка не может быть вынесена в
-            «Недостаточно данных» по существу (T-02). Текст можно добавить из
-            разрешённого источника с указанием происхождения (I-06).
+            Аннотация отсутствует, поэтому тематическая оценка не выносится по
+            существу и остаётся «Недостаточно данных» (T-02). Текст можно
+            добавить из разрешённого источника с указанием происхождения (I-06).
           </Alert>
         )}
       </div>
