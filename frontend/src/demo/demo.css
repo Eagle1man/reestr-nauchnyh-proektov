@@ -1,3 +1,68 @@
+/* Панель структуры вуза: открывается над полосой демо, шириной с неё, чтобы
+   не закрывать кнопку отчёта об ошибке справа. */
+.demo-units {
+  position: fixed;
+  left: 16px;
+  bottom: 108px;
+  z-index: 901;
+  width: min(920px, calc(100vw - 120px));
+  max-height: min(62vh, 520px);
+  overflow: auto;
+  padding: 12px 16px;
+  background: #223140;
+  color: #e9eef5;
+  border: 1px solid #3c5068;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.demo-units--failed { color: #ffd166; }
+
+.demo-units__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.demo-units__title { font-size: 14px; font-weight: 600; }
+
+.demo-units__close {
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  border: 1px solid #56708f;
+  border-radius: 6px;
+  background: #2f4459;
+  color: #e9eef5;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.demo-units__close:hover { background: #385270; }
+
+.demo-units__source { color: #9fb3c8; font-size: 12px; margin: 4px 0 10px; }
+
+.demo-units ul { margin: 4px 0; padding-left: 18px; }
+
+.demo-units li { margin: 2px 0; }
+
+.demo-units__chain { list-style: none; padding-left: 0 !important; }
+
+.demo-units__note, .demo-units__code { color: #9fb3c8; }
+
+/* Коллегиальные органы связаны с ректором пунктиром — показываем это и здесь. */
+.demo-units__collegial {
+  border-left: 2px dashed #56708f;
+  padding-left: 10px;
+  margin: 8px 0;
+}
+
+.demo-units summary { cursor: pointer; }
+
+.demo-units summary:focus-visible { outline: 3px solid #ffd166; outline-offset: 2px; }
+
 /* Полоса демо-режима: левый нижний угол, чтобы не перекрывать кнопку
    отчёта об ошибке (report-fab стоит справа). */
 .demo-bar {
@@ -39,6 +104,9 @@
 
 .demo-bar__action:hover,
 .demo-bar__reset:hover { background: #385270; }
+
+/* Нажатая кнопка «Структура вуза»: панель открыта. */
+.demo-bar__action--on { background: #3d6480; border-color: #7fa7c4; }
 
 .demo-bar__action:focus-visible,
 .demo-bar__reset:focus-visible { outline: 3px solid #ffd166; outline-offset: 2px; }

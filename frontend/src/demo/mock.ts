@@ -348,6 +348,7 @@ function handleRead(path: string): Response {
   }
 
   const patterns: Array<[RegExp, string]> = [
+    [/^\/api\/departments$/, 'departments'],
     [/^\/api\/auth\/me$/, 'auth_me'],
     [/^\/api\/dashboard$/, 'dashboard'],
     [/^\/api\/programs$/, 'programs'],
