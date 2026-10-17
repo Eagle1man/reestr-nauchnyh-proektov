@@ -17,7 +17,7 @@ import type {
   SciDecision, SciPassport, SciPublicationResponse, SciTopicResponse,
 } from '../../science/types';
 import {
-  CONFIRMATION_TITLES, fmtDate, TYPE_TITLES,
+  CONFIRMATION_TITLES, DEMO_WORKS_NOTE, fmtDate, TYPE_TITLES,
 } from '../../science/types';
 import { ScienceHead } from './ScienceHead';
 
@@ -136,6 +136,9 @@ export default function SciencePublicationPage() {
             )}
             <li>Источник: {publication.source_system}, загружено {fmtDate(publication.imported_at)}</li>
             <li>Происхождение записи: <strong>{publication.source_kind_title}</strong></li>
+            {publication.source_kind === 'demo' && (
+              <li className="demo-note">{DEMO_WORKS_NOTE}</li>
+            )}
             {publication.registration && (
               <li>Регистрация программы для ЭВМ: <span className="mono">{publication.registration}</span></li>
             )}

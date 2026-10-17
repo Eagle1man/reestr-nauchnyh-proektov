@@ -95,6 +95,8 @@
   font-size: 12px;
 }
 
+.demo-note { color: #ffd166; }
+
 .demo-bar__action,
 .demo-bar__reset {
   flex: 0 0 auto;

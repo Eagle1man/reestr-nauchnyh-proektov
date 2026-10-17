@@ -18,6 +18,7 @@
  */
 import raw from './science.json';
 import rawElibrary from './elibrary.json';
+import { IN_PROGRESS_DECISION_STATES } from '../science/types';
 
 export type Stage = 'manuscript' | 'submitted' | 'accepted' | 'published';
 
@@ -503,6 +504,7 @@ export function scienceStats(
   scopus_total: number;
   /** Реальных записей всего: eLIBRARY + Scopus (критерий AC-01). */
   real_total: number;
+  demo_with_decisions: number;
 } {
   const categories: Record<string, number> = {};
   let published = 0;
@@ -514,6 +516,7 @@ export function scienceStats(
   let withoutDecision = 0;
   const authors = new Set<string>();
   const breakdown = sourceBreakdown(publications);
+  let demoWithDecisions = 0;
 
   for (const publication of publications) {
     const decision = decisions[publication.id] ?? publication.topic;
@@ -523,6 +526,13 @@ export function scienceStats(
     if (publication.stage === 'submitted') submitted += 1;
     if (!publication.abstract_ru) withoutAbstract += 1;
     const settled = decision.state === 'confirmed' || decision.state === 'expert_changed';
+    // Демонстрационные работы с решениями по тематике считаются отдельно:
+    // именно они показывают заказчику, как работает тематическая оценка, и их
+    // число должно быть видно на странице, а не скрыто в общем итоге.
+    if (publication.source_kind !== 'elibrary' && publication.source_kind !== 'scopus'
+      && (settled || IN_PROGRESS_DECISION_STATES.includes(decision.state as typeof IN_PROGRESS_DECISION_STATES[number]))) {
+      demoWithDecisions += 1;
+    }
     if (decision.category !== 'INSUFFICIENT' && settled) withEnoughData += 1;
     if (decision.category === 'DIRECT' && settled) directConfirmed += 1;
     if (!settled) withoutDecision += 1;
@@ -545,6 +555,7 @@ export function scienceStats(
     elibrary_total: breakdown.elibrary,
     scopus_total: breakdown.scopus,
     real_total: breakdown.real,
+    demo_with_decisions: demoWithDecisions,
   };
 }
 

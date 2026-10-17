@@ -176,6 +176,8 @@ export interface SciStats {
   scopus_total: number;
   /** Реальных записей всего (критерий AC-01 требует минимум 30). */
   real_total: number;
+  /** Демонстрационных работ, у которых есть решение по тематике. */
+  demo_with_decisions: number;
 }
 
 export interface SciListResponse {
@@ -270,6 +272,21 @@ export const SOURCE_KIND_TITLES: Record<SciSourceKind, string> = {
 
 /** Сколько реальных записей нужно для приёмки (AC-01). */
 export const AC01_REQUIRED = 30;
+
+/**
+ * Почему в разделе есть демонстрационные работы.
+ *
+ * Формулировка показана в интерфейсе: без неё 12 демо-работ выглядят как
+ * настоящие публикации, а они взяты только затем, чтобы была видна работа
+ * тематической оценки — у реальных работ аннотаций нет, и оценка по ним
+ * остаётся «Недостаточно данных» (T-02).
+ */
+export const DEMO_WORKS_NOTE = 'Демонстрационная работа: взята, чтобы показать, как '
+  + 'работает тематическая оценка (есть решения эксперта — подтверждены, изменены, '
+  + 'ожидают). Настоящей публикацией не является.';
+
+/** Состояния, при которых работа считается находящейся в работе с оценкой. */
+export const IN_PROGRESS_DECISION_STATES = ['awaiting_expert', 'recheck'] as const;
 
 export function fmtDate(value: string | null | undefined): string {
   return value ? value.slice(0, 10).replace(/-/g, '.') : '—';

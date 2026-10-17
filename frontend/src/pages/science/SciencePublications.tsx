@@ -82,6 +82,15 @@ export default function SciencePublicationsPage() {
         {' '}Scopus — {stats.scopus_total}).
       </p>
 
+      <Alert kind="info">
+        <strong>Демонстрационных работ: {stats.demo_total}, из них с решениями по
+        тематике — {stats.demo_with_decisions}</strong> (подтверждены, изменены
+        экспертом, ожидают). Они взяты не как публикации, а чтобы было видно, как
+        работает тематическая оценка: у реальных работ ({stats.real_total}) нет
+        аннотаций, поэтому их оценка остаётся «Недостаточно данных» (T-02). На
+        карточках таких работ стоит та же пометка.
+      </Alert>
+
       {(data.excluded_duplicates?.length ?? 0) > 0 && (
         <Alert kind="info">
           Выгрузка отдала {data.excluded_duplicates?.length} работ(ы) по два раза.
@@ -179,6 +188,9 @@ export default function SciencePublicationsPage() {
                     {publication.source_kind_title}
                     {publication.needs_author && ' · авторы в источнике не указаны'}
                   </div>
+                  {publication.source_kind === 'demo' && (
+                    <div className="small demo-note">демо: для тематической оценки</div>
+                  )}
                   <div className="small muted">
                     {publication.authors.length
                       ? publication.authors.map((author) => author.name).join(', ')
