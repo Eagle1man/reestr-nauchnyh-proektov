@@ -21,7 +21,8 @@
  */
 import { useRef, useState, type ChangeEvent } from 'react';
 import {
-  exportDemoData, importDemoData, isDemoMode, resetDemoData,
+  currentDemoRole, DEMO_ROLES, exportDemoData, importDemoData, isDemoMode,
+  resetDemoData, setDemoRole,
 } from './mock';
 import './demo.css';
 
@@ -173,6 +174,7 @@ export default function DemoBar() {
   const [units, setUnits] = useState<Departments | null>(null);
   const [unitsFailed, setUnitsFailed] = useState(false);
   const [showUnits, setShowUnits] = useState(false);
+  const [role] = useState(currentDemoRole());
   const fileInput = useRef<HTMLInputElement>(null);
 
   if (!isDemoMode()) return null;
@@ -279,6 +281,25 @@ export default function DemoBar() {
         >
           Структура вуза
         </button>
+
+        {/* Роль переключается без входа: за ней нет настоящей учётной записи,
+            это демонстрация синтетических данных. Права проверяются так же,
+            как на сервере, поэтому закрытые разделы остаются закрытыми для
+            тех ролей, которым они не положены. */}
+        <label className="demo-bar__role">
+          Роль:
+          <select
+            value={role.code}
+            onChange={(event) => {
+              setDemoRole(event.target.value);
+              window.location.reload();
+            }}
+          >
+            {DEMO_ROLES.map((item) => (
+              <option key={item.code} value={item.code}>{item.title}</option>
+            ))}
+          </select>
+        </label>
 
         <button
           type="button"

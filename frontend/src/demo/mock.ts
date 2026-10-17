@@ -23,6 +23,7 @@
  * подмены fetch не происходит.
  */
 import fixtures from './fixtures.json';
+import adminSnapshot from './admin.json';
 import {
   science, scienceStats, setPersonNames, STAGE_TITLES, viewPublication,
   type SciTopicDecision, type Stage,
@@ -99,10 +100,131 @@ export function isDemoMode(): boolean {
   return import.meta.env.VITE_DEMO === '1';
 }
 
+/**
+ * Роли демонстрации.
+ *
+ * Заказчику показывают систему с разных сторон: секретарь ведёт проекты,
+ * проректор и ректор смотрят сводки, технический администратор — учётные
+ * записи, справочники и резервное копирование. Роль переключается без входа
+ * по паролю, потому что это демонстрация синтетических данных, а не рабочая
+ * система: права проверяются здесь так же, как на сервере, но настоящей учётной
+ * записи за этим переключателем нет.
+ *
+ * Матрица берётся из боевой роли, а не выдумывается: например, право
+ * администрирования появляется только у sysadmin.
+ */
+export interface DemoRole {
+  code: string;
+  title: string;
+  login: string;
+  roles: string[];
+  person: { id: string; work_place: string };
+  matrix: Record<string, unknown>;
+}
+
+export const DEMO_ROLES: DemoRole[] = [
+  {
+    code: 'secretary',
+    title: 'Секретарь Научного совета',
+    login: 'secretary',
+    roles: ['secretary'],
+    person: {
+      id: 'd73ba2ad-50e7-41e8-bcbe-0ef5ba643c54',
+      work_place: 'Совет по науке',
+    },
+    matrix: {
+      is_portfolio: true, is_admin: false, can_import: true,
+      can_export_archive: false, can_manage_users: false, can_publish: true,
+    },
+  },
+  {
+    code: 'prorector',
+    title: 'Проректор по науке и меткомпетенциям',
+    login: 'prorector',
+    roles: ['prorector'],
+    person: {
+      id: 'demo-prorector',
+      work_place: 'Ректорат Южного университета (ИУБиП)',
+    },
+    matrix: {
+      is_portfolio: true, is_admin: false, can_import: true,
+      can_export_archive: false, can_manage_users: false, can_publish: true,
+    },
+  },
+  {
+    code: 'rector',
+    title: 'Ректор университета',
+    login: 'rector',
+    roles: ['rector'],
+    person: {
+      id: '2559f682-cb59-47e5-b291-9d2e99c2f3c6',
+      work_place: 'Ректорат Южного университета (ИУБиП)',
+    },
+    matrix: {
+      is_portfolio: true, is_admin: false, can_import: false,
+      can_export_archive: true, can_manage_users: false, can_publish: true,
+    },
+  },
+  {
+    code: 'sysadmin',
+    title: 'Технический администратор',
+    login: 'sysadmin',
+    roles: ['sysadmin'],
+    person: {
+      id: '1d16a3d6-851c-4e66-a412-9d0f2dd6c4b2',
+      work_place: 'Отдел информационно-технического обеспечения',
+    },
+    matrix: {
+      is_portfolio: false, is_admin: true, can_import: true,
+      can_export_archive: false, can_manage_users: true, can_publish: false,
+    },
+  },
+];
+
+const ROLE_KEY = 'rnp.demo.role';
+
+export function currentDemoRole(): DemoRole {
+  let code = '';
+  try {
+    code = window.localStorage.getItem(ROLE_KEY) ?? '';
+  } catch {
+    code = '';
+  }
+  return DEMO_ROLES.find((role) => role.code === code) ?? DEMO_ROLES[0];
+}
+
+export function setDemoRole(code: string): void {
+  try {
+    window.localStorage.setItem(ROLE_KEY, code);
+  } catch {
+    // Хранилище недоступно: роль останется прежней до перезагрузки.
+  }
+}
+
+/** Ответ /api/auth/me под текущую роль демонстрации. */
+function authMe(): Record<string, unknown> {
+  const role = currentDemoRole();
+  const base = bodyOf(snapshot, 'auth_me') as Record<string, unknown>;
+  const baseUser = (base.user ?? {}) as Record<string, unknown>;
+  const basePerson = (base.person ?? {}) as Record<string, unknown>;
+  const baseMatrix = (base.matrix ?? {}) as Record<string, unknown>;
+  return {
+    ...base,
+    user: { ...baseUser, login: role.login, full_name: role.title, roles: role.roles },
+    matrix: { ...baseMatrix, ...role.matrix, global_roles: role.roles },
+    person: {
+      ...basePerson,
+      id: role.person.id,
+      full_name: role.title,
+      work_place: role.person.work_place,
+    },
+  };
+}
+
 function handleLogin(): Response {
   return jsonResponse({
     token: DEMO_TOKEN,
-    user: bodyOf(snapshot, 'auth_me').user,
+    user: (authMe().user as Record<string, unknown>),
     password_min_length: 12,
   });
 }
@@ -354,9 +476,23 @@ function handleRead(path: string, search = ''): Response {
     return card ? jsonResponse(card) : jsonResponse({ error: 'Проект не найден' }, 404);
   }
 
+  // Ответ /api/auth/me зависит от выбранной роли демонстрации, поэтому он не
+  // берётся из снимка, как остальные чтения.
+  if (/^\/api\/auth\/me$/.test(path)) return jsonResponse(authMe());
+
+  // Администрирование: снимок admin.json собран из текстов самой системы
+  // (матрица ролей, справочники), учётные записи и копии — синтетические.
+  // Здесь только чтения; записи разбираются в разделе записей ниже.
+  if (path === '/api/admin/users') {
+    return jsonResponse({ items: adminSnapshot.users, total: adminSnapshot.users.length });
+  }
+  if (path === '/api/admin/roles') return jsonResponse(adminSnapshot.roles);
+  if (path === '/api/admin/dictionaries') return jsonResponse(adminSnapshot.dictionaries);
+  if (path === '/api/admin/settings') return jsonResponse(adminSnapshot.settings);
+  if (path === '/api/admin/backup') return jsonResponse({ items: adminSnapshot.backups });
+
   const patterns: Array<[RegExp, string]> = [
     [/^\/api\/departments$/, 'departments'],
-    [/^\/api\/auth\/me$/, 'auth_me'],
     [/^\/api\/dashboard$/, 'dashboard'],
     [/^\/api\/programs$/, 'programs'],
     [/^\/api\/persons$/, 'persons'],
@@ -612,6 +748,19 @@ export function installDemoMode(): void {
     }
     if (/^\/api\/admin\/users\/[^/]+\/reset-password$/.test(path) && method === 'POST') {
       return jsonResponse({ ok: true, demo: true, initial_password: DEMO_PASSWORD_NOTE });
+    }
+    if (path === '/api/admin/backup' && method === 'POST') {
+      // Создать копию в демонстрации нечем: сервера и файлов нет. Ответ
+      // повторяет форму боевого и прямо говорит, что файл не создавался, —
+      // иначе на экране появилась бы «готовая» копия, которой не существует.
+      return jsonResponse({
+        ...adminSnapshot.backups[0],
+        file: 'demo-backup-not-created.db',
+        created_at: now(),
+        created_at_fmt: now().slice(0, 10),
+        label: 'демонстрация: файл копии не создавался',
+        method: 'в демонстрации',
+      });
     }
 
     if (path === '/api/projects' && method === 'POST') return respond(createProject(body));

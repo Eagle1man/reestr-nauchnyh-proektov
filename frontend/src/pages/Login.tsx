@@ -6,6 +6,7 @@
  * иначе форма позволяет перебирать учётные записи.
  */
 import { FormEvent, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { ApiError } from '../api';
 import { Alert } from '../components/ui';
@@ -105,7 +106,9 @@ export default function LoginPage() {
         требуется смена пароля — обратитесь к техническому администратору.
       </p>
       <p className="small">
-        <a href="/public">Открытый раздел «Наука»</a>
+        {/* Ссылка через роутер: в демонстрации приложение лежит в подкаталоге,
+            и корневой путь увёл бы на 404. */}
+        <Link to="/public">Открытый раздел «Наука»</Link>
       </p>
     </div>
   );

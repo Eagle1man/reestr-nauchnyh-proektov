@@ -85,7 +85,9 @@ function Shell() {
         </nav>
         <div className="topbar__user">
           <NavLink to="/profile" title={user?.full_name}>{user?.full_name}</NavLink>
-          <a href="/public" target="_blank" rel="noreferrer">Открытый раздел</a>
+          {/* Ссылка через роутер, а не href="/public": демо лежит в подкаталоге
+              /reestr-demo/, и корневой путь увёл бы на 404. */}
+          <NavLink to="/public" target="_blank" rel="noreferrer">Открытый раздел</NavLink>
         </div>
       </header>
       <main className="main">

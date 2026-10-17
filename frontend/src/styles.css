@@ -245,6 +245,31 @@ input:disabled, select:disabled, textarea:disabled { background: #f1f4f7; color:
   font-weight: 600;
 }
 
+/* Ссылка, оформленная кнопкой: нужна там, где адрес ведёт не на страницу,
+   а на данные (манифест публичного API в демонстрации). */
+.linklike {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--c-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.public__manifest {
+  max-height: 320px;
+  overflow: auto;
+  padding: 10px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* --- Публичная витрина (от 360 пикселей, п.10.2 п.5) -------------------- */
 
 .public { max-width: 1080px; margin: 0 auto; padding: 16px; }

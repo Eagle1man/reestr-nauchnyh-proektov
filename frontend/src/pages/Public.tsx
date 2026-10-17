@@ -6,8 +6,18 @@
  * к публикации (SEC-03). Адаптивна от 360 пикселей (п.10.2 п.5).
  */
 import { useEffect, useMemo, useState } from 'react';
-import { PublicProject, PublicResult } from '../api';
+import { Link } from 'react-router-dom';
+import { api, PublicProject, PublicResult } from '../api';
 import { Empty, Spinner } from '../components/ui';
+
+/**
+ * В демонстрации манифест показывается на странице, а не ссылкой.
+ *
+ * Ссылка на /api/... ведёт на сервер, а в демо сервера нет: переход дал бы 404
+ * посреди показа заказчику. В рабочей версии остаётся обычная ссылка — там
+ * адрес отдаёт сервер.
+ */
+const IS_DEMO = import.meta.env.VITE_DEMO === '1';
 
 interface ListResponse {
   data: PublicProject[];
@@ -40,6 +50,15 @@ export default function PublicPage() {
   const [resultType, setResultType] = useState('');
   const [error, setError] = useState<string>('');
   const [generatedAt, setGeneratedAt] = useState('');
+  const [manifest, setManifest] = useState('');
+
+  async function showManifest() {
+    try {
+      setManifest(JSON.stringify(await api('/api/public/v1/manifest'), null, 2));
+    } catch (err) {
+      setManifest(`Манифест недоступен: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   useEffect(() => {
     const qs = new URLSearchParams({ limit: '100' });
@@ -169,10 +188,28 @@ export default function PublicPage() {
         </p>
         {generatedAt && <p className="small">Данные сформированы: {generatedAt}</p>}
         <p className="small">
-          <a href="/api/public/v1/manifest">Описание публичного API</a>
+          {IS_DEMO ? (
+            <button type="button" className="linklike" onClick={() => void showManifest()}>
+              Описание публичного API
+            </button>
+          ) : (
+            <a href="/api/public/v1/manifest">Описание публичного API</a>
+          )}
           {' · '}
-          <a href="/">Вход в закрытую часть реестра</a>
+          {/* Ссылка через роутер: в демонстрации приложение лежит в подкаталоге,
+              корневой путь увёл бы на 404. */}
+          <Link to="/">Вход в закрытую часть реестра</Link>
         </p>
+        {manifest && (
+          <>
+            <p className="small">
+              <button type="button" className="linklike" onClick={() => setManifest('')}>
+                Свернуть манифест
+              </button>
+            </p>
+            <pre className="public__manifest">{manifest}</pre>
+          </>
+        )}
       </footer>
     </div>
   );

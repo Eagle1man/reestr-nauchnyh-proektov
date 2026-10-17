@@ -111,6 +111,26 @@
 .demo-bar__action:focus-visible,
 .demo-bar__reset:focus-visible { outline: 3px solid #ffd166; outline-offset: 2px; }
 
+/* Переключатель роли в демонстрации. */
+.demo-bar__role {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #9fb3c8;
+}
+
+.demo-bar__role select {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #56708f;
+  background: #2f4459;
+  color: #e9eef5;
+  max-width: 230px;
+}
+
 /* Поле выбора файла открывает системный диалог по нажатию кнопки. */
 .demo-bar__file { display: none; }
 
