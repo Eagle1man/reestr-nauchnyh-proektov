@@ -323,6 +323,7 @@ def get_diagnostics(actor: CurrentActor):
     return {
         "server": error_log.summary(),
         "recent_errors": error_log.recent(limit=100),
+        "problems": error_log.groups(),
         "environment": {
             "app_name": settings.app_name,
             "debug": settings.debug,
