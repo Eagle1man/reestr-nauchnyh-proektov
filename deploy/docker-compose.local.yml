@@ -1,0 +1,60 @@
+# Контейнерный вариант для локальной машины: вход на порту 8080 напрямую.
+#
+# Отличие от deploy/docker-compose.yml: там контейнер наружу не публикуется и
+# рассчитан на внешний обратный прокси с HTTPS. Здесь порт 8080 публикуется
+# напрямую — это запасной путь на случай, если на машине не ставится nginx,
+# занят 8080 у systemd-варианта или нет доступа к PyPI для venv.
+#
+# Запуск (из распакованного архива):
+#   docker compose -f deploy/docker-compose.local.yml up -d --build
+# Или через установщик: sudo bash deploy/install-docker.sh
+
+name: registry-local
+
+services:
+  registry:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.prebuilt
+    image: registry-app:local
+    restart: unless-stopped
+    # Прямая публикация на 8080. Если порт занят — compose не стартует,
+    # и это правильное поведение: чужие службы не вытесняются.
+    ports:
+      - "8080:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_PATH: /app/data/registry.db
+      BACKUP_DIR: /app/backups
+      DEBUG: "false"
+    volumes:
+      - registry-data:/app/data
+      - registry-backups:/app/backups
+      - registry-storage:/app/storage
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  registry-data:
+    name: registry-data
+  registry-backups:
+    name: registry-backups
+  registry-storage:
+    name: registry-storage
