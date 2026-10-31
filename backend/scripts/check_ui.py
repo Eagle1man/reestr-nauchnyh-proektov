@@ -91,9 +91,16 @@ if projects:
               f"{r.status_code} {r.text[:120]}")
 
 print("\n== Административные разделы ==")
-admin = httpx.post(BASE + "/api/auth/login",
-                   json={"login": "admin", "password": PASSWORD},
-                   timeout=20).json()["token"]
+ADMIN_PASSWORD = os.environ.get("CHECK_UI_ADMIN_PASSWORD", PASSWORD)
+admin_response = httpx.post(BASE + "/api/auth/login",
+                            json={"login": "admin", "password": ADMIN_PASSWORD},
+                            timeout=20)
+if admin_response.status_code != 200:
+    raise SystemExit(
+        "вход admin не выполнен: HTTP {}. "
+        "Пароль администратора задаётся отдельно — CHECK_UI_ADMIN_PASSWORD".format(
+            admin_response.status_code))
+admin = admin_response.json()["token"]
 ha = {"Authorization": f"Bearer {admin}"}
 for path in ("/api/admin/users", "/api/admin/roles", "/api/admin/dictionaries",
              "/api/admin/settings", "/api/admin/backup", "/api/audit", "/api/audit/summary"):

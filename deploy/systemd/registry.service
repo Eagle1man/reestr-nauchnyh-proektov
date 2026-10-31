@@ -40,6 +40,14 @@ ExecStartPre=/opt/registry/.venv/bin/python -c \
    from app.config import settings; \
    sys.exit(0 if settings.secret_key and len(settings.secret_key) >= 32 else 1)"
 
+# Режим WAL выставляется один раз ДО запуска воркеров. Два воркера,
+# переключающие журнал одновременно, получают «locking protocol», и служба
+# не стартует вовсе. Код умеет повторять попытку, но здесь гонки нет совсем.
+ExecStartPre=/opt/registry/.venv/bin/python -c \
+  "import sys; sys.path.insert(0,'/opt/registry/backend'); \
+   from app.db import get_conn; \
+   print('journal_mode:', get_conn().execute('PRAGMA journal_mode').fetchone()[0])"
+
 ExecStart=/opt/registry/.venv/bin/python -m uvicorn app.main:app \
     --host 127.0.0.1 \
     --port 8000 \

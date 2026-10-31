@@ -70,9 +70,13 @@ def main() -> int:
     check("несуществующий логин — тот же ответ 401", r.status_code == 401, str(r.status_code))
 
     tokens: dict[str, str] = {}
+    # Пароль администратора задаётся отдельно от пилотных учётных записей:
+    # seed намеренно не выдаёт admin тот же пароль (SEED_ADMIN_PASSWORD).
+    admin_password = os.environ.get("SMOKE_ADMIN_PASSWORD", PASSWORD)
     for login in ("admin", "prorector", "secretary", "leader1", "curator1",
                   "expert1", "rector"):
-        r = client.post("/api/auth/login", json={"login": login, "password": PASSWORD})
+        password = admin_password if login == "admin" else PASSWORD
+        r = client.post("/api/auth/login", json={"login": login, "password": password})
         if check(f"вход {login}", r.status_code == 200, r.text[:160]):
             tokens[login] = r.json()["token"]
 

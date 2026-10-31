@@ -18,18 +18,34 @@
 #    PORT=8080            внешний порт
 #    SEED_PASSWORD=...    создать пилотные учётные записи с этим паролем
 #    APP_DIR=/opt/registry
+#    IT_SKIP_SYSTEMD=1    только для проверки на машине без systemd (WSL,
+#                         контейнер): служба не регистрируется, приложение
+#                         запускается вручную. На сервере не задавать.
 # =====================================================================
 set -euo pipefail
 
 SRC="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 APP_DIR="${APP_DIR:-/opt/registry}"
 PORT="${PORT:-8080}"
+SKIP_SYSTEMD="${IT_SKIP_SYSTEMD:-0}"
 SERVICE=registry
 NGINX_SITE=registry-local
 BACKUP_DIR="$APP_DIR/backups"
 
 say()  { printf '\n[%s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 fail() { printf '\n[ОШИБКА] %s\n' "$*" >&2; exit 1; }
+
+# Приложение стартует не мгновенно: два воркера uvicorn поднимаются несколько
+# секунд, на слабой машине — дольше. Фиксированная пауза давала ложный отказ.
+wait_health() {
+  for _ in $(seq 1 40); do
+    if curl -fsS http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
 
 [ "$(id -u)" -eq 0 ] || fail "нужны права root: sudo bash $0 $*"
 [ -d "$SRC/backend" ] || fail "не найден каталог backend в $SRC — распакуйте архив и укажите путь к нему"
@@ -108,9 +124,14 @@ cd "$APP_DIR"
 # Окружение не пробрасываем через xargs: в APP_NAME есть пробелы, и такая
 # передача разваливала бы переменную на слова. Приложение само читает .env
 # из рабочего каталога, поэтому достаточно запустить его от имени registry.
-sudo -u registry "$APP_DIR/.venv/bin/python" - <<'PY'
+sudo -u registry env APP_DIR="$APP_DIR" "$APP_DIR/.venv/bin/python" - <<'PY'
+import os
 import sys
-sys.path.insert(0, "/opt/registry/backend")
+
+# Каталог установки передаётся переменной, а не зашит в текст: иначе
+# установка в другой каталог (например, тестовый) падала бы на импорте.
+app_dir = os.environ["APP_DIR"]
+sys.path.insert(0, os.path.join(app_dir, "backend"))
 from app.db import run_migrations
 print("    применены миграции:", run_migrations() or "нет новых")
 PY
@@ -120,9 +141,23 @@ PY
 if [ "$UPDATING" = "0" ]; then
   sudo -u registry "$APP_DIR/.venv/bin/python" backend/scripts/seed.py
   if [ -n "${SEED_PASSWORD:-}" ]; then
+    # Пароль администратора задаётся отдельно: seed не даёт admin тот же
+    # пароль, что пилотным учётным записям. Без SEED_ADMIN_PASSWORD он
+    # сгенерирует случайный, и войти под admin будет нечем.
+    if [ -z "${SEED_ADMIN_PASSWORD:-}" ]; then
+      say "    ВНИМАНИЕ: SEED_ADMIN_PASSWORD не задан — пароль admin сгенерирован случайно"
+    fi
+    SEED_OUT="$APP_DIR/.seed-users-$(date +%Y%m%d-%H%M%S).txt"
     sudo -u registry env SEED_PASSWORD="$SEED_PASSWORD" \
-      "$APP_DIR/.venv/bin/python" backend/scripts/seed.py --with-users
-    say "    пилотные учётные записи созданы (пароль из SEED_PASSWORD)"
+      SEED_ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD:-}" \
+      "$APP_DIR/.venv/bin/python" backend/scripts/seed.py --with-users \
+      > "$SEED_OUT" 2>&1
+    chmod 600 "$SEED_OUT"
+    chown registry:registry "$SEED_OUT"
+    # Пароли не печатаются в общий журнал установки: он остаётся на машине
+    # и попадает в отчёты. Список лежит отдельным файлом с правами 600.
+    say "    пилотные учётные записи созданы"
+    say "    логины и временные пароли: $SEED_OUT (выдать лично, затем удалить)"
   else
     say "    справочники загружены; учётные записи не создавались (нужен SEED_PASSWORD)"
   fi
@@ -131,17 +166,33 @@ else
 fi
 
 say "8/9 Служба systemd"
-install -m 644 "$APP_DIR/deploy/systemd/registry.service" /etc/systemd/system/
-systemctl daemon-reload
-systemctl enable "$SERVICE" >/dev/null 2>&1 || true
-systemctl restart "$SERVICE"
-sleep 2
-systemctl is-active --quiet "$SERVICE" || {
-  journalctl -u "$SERVICE" -n 30 --no-pager || true
-  fail "служба не запустилась"
-}
-curl -fsS http://127.0.0.1:8000/api/health >/dev/null || fail "приложение не отвечает на 127.0.0.1:8000"
-say "    служба активна, /api/health отвечает"
+if [ "$SKIP_SYSTEMD" = "1" ]; then
+  say "    режим проверки: служба не регистрируется, приложение запускается вручную"
+  pkill -f "uvicorn app.main:app" 2>/dev/null || true
+  sudo -u registry env PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
+    nohup "$APP_DIR/.venv/bin/python" -m uvicorn app.main:app \
+      --host 127.0.0.1 --port 8000 --workers 2 --proxy-headers \
+      --forwarded-allow-ips='127.0.0.1' --no-server-header \
+      --app-dir "$APP_DIR/backend" >/tmp/registry-app.log 2>&1 &
+  sleep 2
+  wait_health || {
+    tail -30 /tmp/registry-app.log || true
+    fail "приложение не отвечает на 127.0.0.1:8000"
+  }
+  say "    приложение запущено вручную, /api/health отвечает"
+else
+  install -m 644 "$APP_DIR/deploy/systemd/registry.service" /etc/systemd/system/
+  systemctl daemon-reload
+  systemctl enable "$SERVICE" >/dev/null 2>&1 || true
+  systemctl restart "$SERVICE"
+  sleep 2
+  systemctl is-active --quiet "$SERVICE" || {
+    journalctl -u "$SERVICE" -n 30 --no-pager || true
+    fail "служба не запустилась"
+  }
+  curl -fsS http://127.0.0.1:8000/api/health >/dev/null || wait_health || fail "приложение не отвечает на 127.0.0.1:8000"
+  say "    служба активна, /api/health отвечает"
+fi
 
 say "9/9 Вход через nginx на :$PORT"
 install -m 644 "$APP_DIR/deploy/nginx/registry-local.conf" "/etc/nginx/sites-available/$NGINX_SITE.conf"
@@ -151,9 +202,14 @@ if ! nginx -t >/tmp/nginx-test.log 2>&1; then
   rm -f "/etc/nginx/sites-enabled/$NGINX_SITE.conf"
   fail "конфигурация nginx не прошла проверку; наш сайт отключён, чужие не тронуты"
 fi
-systemctl enable nginx >/dev/null 2>&1 || true
-systemctl reload nginx
-sleep 1
+if [ "$SKIP_SYSTEMD" = "1" ]; then
+  nginx -s reload 2>/dev/null || nginx
+  sleep 1
+else
+  systemctl enable nginx >/dev/null 2>&1 || true
+  systemctl reload nginx
+  sleep 1
+fi
 curl -fsS "http://127.0.0.1:$PORT/api/health" >/dev/null || fail "через nginx на :$PORT приложение не отвечает"
 
 IP=$(hostname -I | awk '{print $1}')

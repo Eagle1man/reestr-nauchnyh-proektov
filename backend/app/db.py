@@ -16,6 +16,7 @@ from __future__ import annotations
 import os
 import sqlite3
 import threading
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
@@ -39,10 +40,26 @@ def _connect() -> sqlite3.Connection:
         check_same_thread=False,
     )
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode = WAL")
+    # busy_timeout выставляется ДО переключения журнала: иначе ожидание
+    # блокировки на этом шаге не действует, и переключение падает сразу.
+    conn.execute(f"PRAGMA busy_timeout = {int(settings.sqlite_timeout_seconds * 1000)}")
+
+    # Переключение в WAL — операция над файлом базы, а не над соединением.
+    # Когда uvicorn поднимает два воркера, они делают это одновременно, и
+    # второй получает «locking protocol» — приложение не стартует вовсе.
+    # Поэтому пробуем несколько раз: первый воркер режим уже выставил, и
+    # повторное переключение проходит без ожидания.
+    for attempt in range(10):
+        try:
+            conn.execute("PRAGMA journal_mode = WAL")
+            break
+        except sqlite3.OperationalError as exc:
+            if "locking protocol" not in str(exc) or attempt == 9:
+                raise
+            time.sleep(0.2 * (attempt + 1))
+
     conn.execute("PRAGMA synchronous = NORMAL")
     conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute(f"PRAGMA busy_timeout = {int(settings.sqlite_timeout_seconds * 1000)}")
     return conn
 
 
