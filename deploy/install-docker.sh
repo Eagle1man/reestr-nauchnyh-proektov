@@ -64,6 +64,21 @@ if ss -ltn 2>/dev/null | grep -q ":$PORT "; then
   fi
 fi
 
+# Старые движки (до 20.10) блокируют системный вызов clone3, а glibc 2.34+
+# создаёт через него потоки: приложение падает на старте с «can't start new
+# thread». Для них подключается отдельный файл, снимающий фильтр seccomp.
+COMPOSE_ARGS="-f $COMPOSE_FILE"
+if [ "$DRY" != "1" ]; then
+  SERVER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null || echo "0.0")
+  VERSION_CODE=$(printf '%s' "$SERVER_VERSION" | awk -F. '{printf "%d%03d", $1, $2}')
+  if [ "${VERSION_CODE:-0}" -lt 20010 ]; then
+    COMPOSE_ARGS="$COMPOSE_ARGS -f deploy/docker-compose.old-engine.yml"
+    say "    движок $SERVER_VERSION старше 20.10: подключён обход clone3 (seccomp=unconfined)"
+  else
+    say "    движок $SERVER_VERSION: обход не нужен"
+  fi
+fi
+
 cd "$SRC"
 
 say "3/7 Настройки (.env)"
@@ -84,10 +99,10 @@ fi
 chmod 600 .env
 
 say "4/7 Сборка образа"
-do_it "$COMPOSE -f $COMPOSE_FILE build"
+do_it "$COMPOSE $COMPOSE_ARGS build"
 
 say "5/7 Миграции"
-do_it "$COMPOSE -f $COMPOSE_FILE run --rm --entrypoint python registry -c \
+do_it "$COMPOSE $COMPOSE_ARGS run --rm --entrypoint python registry -c \
   \"import sys; sys.path.insert(0,'/app/backend'); from app.db import run_migrations; print('миграции:', run_migrations() or 'нет новых')\""
 
 say "6/7 Учётные записи"
@@ -96,7 +111,7 @@ if [ -n "${SEED_PASSWORD:-}" ]; then
   if [ "$DRY" = "1" ]; then
     printf '    [проверка] seed --with-users, вывод в %s\n' "$SEED_OUT"
   else
-    $COMPOSE -f $COMPOSE_FILE run --rm -T \
+    $COMPOSE $COMPOSE_ARGS run --rm -T \
       -e SEED_PASSWORD="$SEED_PASSWORD" \
       -e SEED_ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD:-}" \
       --entrypoint python registry backend/scripts/seed.py --with-users \
@@ -109,7 +124,7 @@ else
 fi
 
 say "7/7 Запуск и проверка"
-do_it "$COMPOSE -f $COMPOSE_FILE up -d"
+do_it "$COMPOSE $COMPOSE_ARGS up -d"
 if [ "$DRY" != "1" ]; then
   READY=0
   for _ in $(seq 1 60); do
@@ -117,7 +132,7 @@ if [ "$DRY" != "1" ]; then
     sleep 2
   done
   [ "$READY" = "1" ] || {
-    $COMPOSE -f $COMPOSE_FILE logs --tail 40 registry || true
+    $COMPOSE $COMPOSE_ARGS logs --tail 40 registry || true
     fail "приложение не ответило на 8080"
   }
   IP=$(hostname -I | awk '{print $1}')
@@ -126,8 +141,8 @@ if [ "$DRY" != "1" ]; then
 =====================================================================
  Контейнерная установка завершена.
    Приложение:  http://$IP:$PORT/
-   Состояние:   $COMPOSE -f $COMPOSE_FILE ps
-   Журнал:      $COMPOSE -f $COMPOSE_FILE logs -f registry
+   Состояние:   $COMPOSE $COMPOSE_ARGS ps
+   Журнал:      $COMPOSE $COMPOSE_ARGS logs -f registry
    Копии базы:  docker run --rm -v registry-backups:/b alpine ls /b
 =====================================================================
 EOF

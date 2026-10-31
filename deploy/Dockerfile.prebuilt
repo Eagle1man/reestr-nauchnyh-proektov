@@ -15,11 +15,11 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     TZ=Europe/Moscow
 
-# tzdata обязателен: без него Python не знает зону Europe/Moscow, а время
-# в интерфейсе и журнале должно быть московским (п.10.2 п.2).
-RUN apt-get update \
- && apt-get install -y --no-install-recommends tzdata curl \
- && rm -rf /var/lib/apt/lists/*
+# Пакеты через apt здесь НЕ ставятся намеренно. Во-первых, они не нужны:
+# зона Europe/Moscow доступна через zoneinfo, а проверка живости делается
+# тем же Python. Во-вторых, на старых движках (Docker 19.03 + overlay2)
+# распаковка .deb падает с «lzma error: Cannot allocate memory» — образ
+# просто не собирается. Меньше слоёв — меньше причин для отказа.
 
 # Приложение работает не от root: каталоги данных и копий принадлежат
 # непривилегированному пользователю.
@@ -30,7 +30,10 @@ RUN useradd --system --create-home --uid 10001 registry \
 WORKDIR /app
 
 COPY backend/requirements.txt backend/requirements.txt
-RUN pip install --no-cache-dir -r backend/requirements.txt
+# --progress-bar off: индикатор загрузки поднимает отдельный поток, а на
+# ограничении числа процессов в контейнере это падает с «can't start new
+# thread». С выключенным индикатором установка идёт одним потоком.
+RUN pip install --no-cache-dir --progress-bar off -r backend/requirements.txt
 
 COPY backend/ /app/backend/
 COPY --chown=registry:registry frontend/dist/ /app/frontend/dist/
@@ -46,7 +49,7 @@ ENV DATABASE_PATH=/app/data/registry.db \
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD curl -fsS http://127.0.0.1:8000/api/health || exit 1
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status==200 else 1)"
 
 # --workers 2 совпадает с боевой службой systemd. WAL выставляется в
 # ExecStartPre только в systemd, поэтому в контейнере его выставляет сам

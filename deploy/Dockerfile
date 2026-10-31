@@ -24,11 +24,10 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     TZ=Europe/Moscow
 
-# tzdata обязателен: без него Python не знает зону Europe/Moscow, а время
-# в интерфейсе и в журнале должно быть московским (п.10.2 п.2).
-RUN apt-get update \
- && apt-get install -y --no-install-recommends tzdata curl \
- && rm -rf /var/lib/apt/lists/*
+# Пакеты через apt не ставятся: зона Europe/Moscow доступна через zoneinfo,
+# проверка живости делается Python. На старых движках (Docker 19.03 +
+# overlay2) распаковка .deb падает с «lzma error: Cannot allocate memory»,
+# и образ не собирается вовсе.
 
 # Приложение работает не от root: каталоги данных и копий принадлежат
 # непривилегированному пользователю.
@@ -39,7 +38,7 @@ RUN useradd --system --create-home --uid 10001 registry \
 WORKDIR /app
 
 COPY backend/requirements.txt backend/requirements.txt
-RUN pip install --no-cache-dir -r backend/requirements.txt
+RUN pip install --no-cache-dir --progress-bar off -r backend/requirements.txt
 
 COPY backend/ /app/backend/
 COPY .env.example /app/.env.example
@@ -56,7 +55,7 @@ EXPOSE 8000
 
 # Проверка живости совпадает с healthcheck в docker-compose.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD curl -fsS http://127.0.0.1:8000/api/health || exit 1
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status==200 else 1)"
 
 # --proxy-headers нужен, чтобы приложение видело реальный адрес клиента за
 # обратным прокси: от него зависит ограничение частоты запросов.

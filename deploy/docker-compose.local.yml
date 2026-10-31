@@ -8,13 +8,24 @@
 # Запуск (из распакованного архива):
 #   docker compose -f deploy/docker-compose.local.yml up -d --build
 # Или через установщик: sudo bash deploy/install-docker.sh
+#
+# Имя проекта задаётся переменной COMPOSE_PROJECT_NAME (установщик её
+# выставляет). Ключ name: сверху не используется: docker-compose 1.x его
+# не понимает, а версия 1.x ещё встречается на машинах.
+#
+# version задаётся для совместимости с docker-compose 1.x: без него файл
+# разбирается как устаревший формат без раздела services. 3.7 — последняя
+# версия, которую понимает docker-compose 1.24; версия 2 принимает её же.
 
-name: registry-local
+version: "3.7"
 
 services:
   registry:
     build:
-      context: .
+      # Контекст — корень распакованного архива: файл лежит в deploy/,
+      # поэтому путь к корню «..». Иначе в образ не попадут backend и
+      # frontend/dist.
+      context: ..
       dockerfile: deploy/Dockerfile.prebuilt
     image: registry-app:local
     restart: unless-stopped
@@ -23,7 +34,8 @@ services:
     ports:
       - "8080:8000"
     env_file:
-      - .env
+      # Путь относительно файла compose, поэтому «..».
+      - ../.env
     environment:
       DATABASE_PATH: /app/data/registry.db
       BACKUP_DIR: /app/backups
@@ -33,7 +45,10 @@ services:
       - registry-backups:/app/backups
       - registry-storage:/app/storage
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/health"]
+      # curl в образе нет: пакеты через apt не ставятся (на старых движках
+      # распаковка .deb падает). Проверка — тем же Python, что и приложение.
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status==200 else 1)"]
       interval: 30s
       timeout: 5s
       retries: 3
