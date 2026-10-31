@@ -324,6 +324,7 @@ def get_diagnostics(actor: CurrentActor):
         "server": error_log.summary(),
         "recent_errors": error_log.recent(limit=100),
         "problems": error_log.groups(),
+        "stored_problems": error_log.stored_groups(),
         "environment": {
             "app_name": settings.app_name,
             "debug": settings.debug,
@@ -334,7 +335,9 @@ def get_diagnostics(actor: CurrentActor):
         },
         "note": "Ошибки живут в памяти процесса и сбрасываются при перезапуске. "
                 "Это осознанно: наружу сервер ничего не отправляет, отчёт "
-                "забирает и увозит сам пользователь.",
+                "забирает и увозит сам пользователь. История для разбора — "
+                "в stored_problems: она переживает перезапуск, хранится 90 дней "
+                "и не содержит логинов.",
     }
 
 
